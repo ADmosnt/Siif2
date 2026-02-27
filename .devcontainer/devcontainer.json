@@ -1,0 +1,12 @@
+{
+    "name": "Entorno de desarrollo",
+    "dockerComposeFile": "../docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/var/www",
+    "forwardPorts": [8080, 5173, 3309],
+        "portsAttributes": {
+        "8080": { "label": "Web Server (Nginx)" },
+        "5173": { "label": "Vite HMR" },
+        "3309": { "label": "MySQL" }
+    },   
+}

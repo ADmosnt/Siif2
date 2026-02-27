@@ -1,0 +1,493 @@
+@import 'tailwindcss';
+
+@import "tw-animate-css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans:
+    Instrument Sans, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-xl:
+    calc(var(--radius) + 4px);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+@layer utilities {
+  body,
+  html {
+    --font-sans:
+      'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+      'Noto Color Emoji';
+  }
+}
+
+@layer components {
+  /* aquí defines tu botón “global” */
+  .btn-global {
+    @apply flex-1
+           bg-green-500 hover:bg-green-600
+           text-white font-bold
+           py-2 rounded;
+  }
+}
+
+:root {
+  --background:
+    oklch(1 0 0);
+  --foreground:
+    oklch(0.145 0 0);
+  --card:
+    oklch(1 0 0);
+  --card-foreground:
+    oklch(14.479% 0.00002 271.152);
+  --popover:
+    oklch(1 0 0);
+  --popover-foreground:
+    oklch(0.145 0 0);
+  --primary:
+    oklch(0.205 0 0);
+  --primary-foreground:
+    oklch(0.985 0 0);
+  --secondary:
+    oklch(0.97 0 0);
+  --secondary-foreground:
+    oklch(0.205 0 0);
+  --muted:
+    oklch(0.97 0 0);
+  --muted-foreground:
+    oklch(0.556 0 0);
+  --accent:
+    oklch(0.97 0 0);
+  --accent-foreground:
+    oklch(0.205 0 0);
+  --destructive:
+    oklch(0.577 0.245 27.325);
+  --destructive-foreground:
+    oklch(0.577 0.245 27.325);
+  --border:
+    oklch(0.922 0 0);
+  --input:
+    oklch(0.922 0 0);
+  --ring:
+    oklch(0.708 0 0);
+  --chart-1:
+    oklch(0.646 0.222 41.116);
+  --chart-2:
+    oklch(0.6 0.118 184.704);
+  --chart-3:
+    oklch(0.398 0.07 227.392);
+  --chart-4:
+    oklch(0.828 0.189 84.429);
+  --chart-5:
+    oklch(0.769 0.188 70.08);
+  --radius:
+    0.625rem;
+  --sidebar-background: hsl(0 0% 98%);
+  --sidebar-foreground:
+    oklch(0.145 0 0);
+  --sidebar-primary:
+    oklch(0.205 0 0);
+  --sidebar-primary-foreground:
+    oklch(0.985 0 0);
+  --sidebar-accent:
+    oklch(0.97 0 0);
+  --sidebar-accent-foreground:
+    oklch(0.205 0 0);
+  --sidebar-border:
+    oklch(0.922 0 0);
+  --sidebar-ring:
+    oklch(0.708 0 0);
+  --sidebar:
+    oklch(0.985 0 0);
+}
+
+.dark {
+  --background:
+    oklch(0.2085 0.0118 292.99);
+  --foreground:
+    oklch(0.985 0 0);
+  --card:
+    oklch(0.145 0 0);
+  --card-foreground:
+    oklch(0.985 0 0);
+  --popover:
+    oklch(0.145 0 0);
+  --popover-foreground:
+    oklch(0.985 0 0);
+  --primary:
+    oklch(0.985 0 0);
+  --primary-foreground:
+    oklch(0.205 0 0);
+  --secondary:
+    oklch(0.269 0 0);
+  --secondary-foreground:
+    oklch(0.985 0 0);
+  --muted:
+    oklch(0.269 0 0);
+  --muted-foreground:
+    oklch(0.708 0 0);
+  --accent:
+    oklch(0.269 0 0);
+  --accent-foreground:
+    oklch(0.985 0 0);
+  --destructive:
+    oklch(0.396 0.141 25.723);
+  --destructive-foreground:
+    oklch(0.637 0.237 25.331);
+  --border:
+    oklch(0.269 0 0);
+  --input:
+    oklch(0.269 0 0);
+  --ring:
+    oklch(0.439 0 0);
+  --chart-1:
+    oklch(0.488 0.243 264.376);
+  --chart-2:
+    oklch(0.696 0.17 162.48);
+  --chart-3:
+    oklch(0.769 0.188 70.08);
+  --chart-4:
+    oklch(0.627 0.265 303.9);
+  --chart-5:
+    oklch(0.645 0.246 16.439);
+  --sidebar-background: hsl(250, 8%, 16%);
+  --sidebar-foreground:
+    oklch(0.985 0 0);
+  --sidebar-primary:    
+    oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground:
+    oklch(0.985 0 0);
+  --sidebar-accent:
+    oklch(0.269 0 0);
+  --sidebar-accent-foreground:
+    oklch(0.985 0 0);
+  --sidebar-border:
+    oklch(45.785% 0.1146 276.645);
+  --sidebar-ring:
+    oklch(0.439 0 0);
+  --sidebar:
+    oklch(0.205 0 0);
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/*
+  ---break---
+*/
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ————————————————————————————————————————— */
+/* Scrollbar styling para .overflow-x-auto      */
+/* Pon esto **fuera** de cualquier @layer/base  */
+/* y después de @tailwind utilities            */
+/* ————————————————————————————————————————— */
+
+/* ==== LIGHT MODE ==== */
+.overflow-x-auto {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f1f5f9;
+}
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  /* WebKit: horizontal y vertical */
+  .overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+  }
+}
+
+/* ==== DARK MODE ==== */
+.dark .overflow-x-auto {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+}
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  .dark .overflow-x-auto::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .dark .overflow-x-auto::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+  .dark .overflow-x-auto::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+  }
+}
+
+/* ————————————————————————————————————————— */
+/* Select responsivo - Herencia de ancho del trigger */
+/* ————————————————————————————————————————— */
+
+/* Forzar que el select content herede el ancho del trigger */
+[data-reka-select-content][data-side] {
+  width: var(--reka-select-trigger-width) !important;
+  min-width: var(--reka-select-trigger-width) !important;
+}
+
+/* Asegurar que el viewport ocupe todo el ancho */
+[data-reka-select-viewport] {
+  width: 100% !important;
+}
+
+/* Fallback para cuando las variables CSS no estén disponibles */
+[data-reka-select-content]:not([style*="--reka-select-trigger-width"]) {
+  width: 100%;
+  min-width: max-content;
+}
+
+/* ————————————————————————————————————————— */
+/* Header Breadcrumbs - Colores personalizados */
+/* ————————————————————————————————————————— */
+
+/* Breadcrumbs en header con fondo azul - ambos temas */
+.header-breadcrumbs [data-slot="breadcrumb-list"] {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.header-breadcrumbs [data-slot="breadcrumb-page"] {
+  color: rgb(255, 255, 255);
+  font-weight: 400;
+}
+
+.header-breadcrumbs [data-slot="breadcrumb-link"] {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.2s;
+}
+
+.header-breadcrumbs [data-slot="breadcrumb-link"]:hover {
+  color: rgb(255, 255, 255);
+}
+
+/* Separadores (chevrons) también en blanco */
+.header-breadcrumbs [data-slot="breadcrumb-separator"] {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-sidebar="trigger"] {
+  color: rgb(255 255 255) !important;
+}
+
+[data-sidebar="trigger"]:hover {
+  color: rgb(255 255 255 / 0.8) !important;
+}
+
+/* Asegurar que los SVG hereden el color */
+[data-sidebar="trigger"] svg {
+  color: inherit;
+}
+
+/* ============================================= */
+/* ESTILOS PARA LA PÍLDORA DEL HEADER - ACTUALIZADO */
+/* ============================================= */
+
+/* Header con gradiente */
+.header-with-gradient {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: linear-gradient(135deg, #005ab6 0%, #003d82 100%);
+}
+
+.current-view-pill {
+  background-color: #005ab6;
+  color: white;
+
+  /* * ESTA ES LA CLAVE.
+   * Define el espacio interno. 0.5rem vertical, 4rem horizontal.
+   * El ancho total de la píldora será (8rem + el ancho de tu texto).
+   */
+  padding: 0.5rem 4rem;
+
+  border-radius: 9999px;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap; /* Correcto, para que el texto no se parta */
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  /* Posicionamiento */
+  position: absolute;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+
+  /* Correcto, mantenlo siempre */
+  box-sizing: border-box; 
+
+  /* * ELIMINA ESTO. 
+   * Tu 'width: 250px' es demasiado pequeño para 
+   * 'padding: 8rem' + 'texto: "Listado de Reportes"'.
+   * Es la fuente de tu conflicto.
+   */
+  /* width: 250px; <-- CONFLICTO */
+  /* max-width: 250px; <-- CONFLICTO */
+
+  /* * OPCIONAL: Si temes que un texto muy largo 
+   * (ej: "Listado de Reportes de Mantenimiento") 
+   * haga la píldora demasiado ancha, usa un max-width SENSATO.
+   * 250px era absurdo, 350px o 400px es más realista.
+   */
+   max-width: 400px;
+   
+   /* Si usas max-width, debes decirle qué hacer si el texto se pasa */
+   overflow: hidden;
+   text-overflow: ellipsis;
+
+  /* Esto centrará el texto dentro del espacio que has creado */
+  text-align: center;
+}
+
+.current-view-text {
+  color: inherit;
+  font: inherit;
+  letter-spacing: 0.025em;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+/* Estilos responsive - TABLET Y MÓVIL */
+@media (max-width: 768px) {
+  .current-view-pill {
+    position: static;
+    transform: none;
+    margin: 0 auto;
+    font-size: 0.875rem;
+    padding: 0.375rem 1.5rem;
+    min-width: 100px;
+    max-width: 200px;
+  }
+  
+  .header-with-gradient {
+    flex-direction: column;
+    gap: 0.5rem;
+    height: auto;
+    min-height: 4rem;
+  }
+}
+
+/* Para pantallas muy pequeñas */
+@media (max-width: 480px) {
+  .current-view-pill {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.8rem;
+    padding: 0.3rem 1.2rem;
+  }
+}
+
+/* Opcional: Efecto hover para desktop */
+@media (min-width: 769px) {
+  .current-view-pill {
+    transition: all 0.2s ease;
+  }
+  
+  .current-view-pill:hover {
+    background-color: #004a9c;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-50%) scale(1.02);
+  }
+}
