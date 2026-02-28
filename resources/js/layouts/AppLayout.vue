@@ -3,10 +3,8 @@
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItemType } from '@/types';
 import GenericGlobalAlert from '@/components/GenericGlobalAlert.vue'
-
-// --- Imports para el Easter Egg (controlado por VITE_CUBEGG_ENABLED) ---
-import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { defineAsyncComponent } from 'vue';
+import { useEasterEggStore } from '@/stores/easterEggStore';
 
 // Carga asíncrona del CubEgg para no afectar el bundle principal
 const CubEgg = defineAsyncComponent(() =>
@@ -20,53 +18,10 @@ withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
 
-// ========================================================================
-// --- LÓGICA DEL EASTER EGG (VERSIÓN INERTIA.JS) ---
-// Se activa SOLO si VITE_CUBEGG_ENABLED=true en el .env
-// ========================================================================
+// El Konami Code se registra globalmente en plugins/konamiCode.ts
+// Aquí solo consumimos el estado del store
 const cubeggEnabled = import.meta.env.VITE_CUBEGG_ENABLED === 'true';
-const showEasterEgg = ref(false);
-const routeHistory = ref<string[]>([]);
-const secretRouteSequence = ['/consulta-reporte', '/preguntas', '/consulta-gerencial'];
-
-let removeInertiaListener: (() => void) | null = null;
-
-onMounted(() => {
-  if (!cubeggEnabled) {
-    console.log('[CubEgg] ❌ Desactivado (VITE_CUBEGG_ENABLED no es "true")');
-    return;
-  }
-
-  console.log('[CubEgg] ✅ Activado. Secuencia secreta:', secretRouteSequence);
-
-  removeInertiaListener = router.on('success', (event) => {
-    const newPath = new URL(event.detail.page.url, window.location.origin).pathname;
-
-    routeHistory.value.push(newPath);
-
-    // Solo mantener las últimas N rutas necesarias
-    if (routeHistory.value.length > secretRouteSequence.length) {
-      routeHistory.value = routeHistory.value.slice(-secretRouteSequence.length);
-    }
-
-    const lastVisited = routeHistory.value.slice(-secretRouteSequence.length);
-
-    console.log('[CubEgg] Navegación:', newPath, '| Historial:', lastVisited, '| Esperado:', secretRouteSequence);
-
-    if (lastVisited.length === secretRouteSequence.length &&
-        JSON.stringify(lastVisited) === JSON.stringify(secretRouteSequence)) {
-      console.log('[CubEgg] 🎉 ¡Secuencia completada! Activando Easter Egg');
-      showEasterEgg.value = !showEasterEgg.value;
-      routeHistory.value = [];
-    }
-  });
-});
-
-onUnmounted(() => {
-  if (removeInertiaListener) {
-    removeInertiaListener();
-  }
-});
+const easterEggStore = useEasterEggStore();
 </script>
 
 <template>
@@ -76,6 +31,6 @@ onUnmounted(() => {
             <slot />
         </AppLayout>
 
-        <CubEgg v-if="cubeggEnabled && showEasterEgg" @close="showEasterEgg = false" />
+        <CubEgg v-if="cubeggEnabled && easterEggStore.showEasterEgg" @close="easterEggStore.close()" />
     </div>
 </template>

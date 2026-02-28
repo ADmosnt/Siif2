@@ -9,6 +9,7 @@ import { ZiggyVue } from 'ziggy-js'
 import { initializeTheme } from './composables/useAppearance'
 import { setupAxiosInterceptors } from './plugins/axiosInterceptors'
 import { setupInertiaAlerts } from './plugins/inertiaAlerts'
+import { setupKonamiCode } from './plugins/konamiCode'
 import axios from 'axios'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel'
@@ -32,6 +33,9 @@ createInertiaApp({
 
     // Configurar alertas de Inertia
     setupInertiaAlerts()
+
+    // Configurar Konami Code para Easter Egg
+    setupKonamiCode()
     // (Opcional) antes o después del mount, como prefieras:
     axios.defaults.withCredentials = true
     axios.defaults.withXSRFToken = true
