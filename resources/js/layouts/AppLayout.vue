@@ -1,19 +1,18 @@
 <!-- resources/js/layouts/AppLayout.vue -->
 <script setup lang="ts">
-// --- Tus imports originales ---
 import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
 import type { BreadcrumbItemType } from '@/types';
-
 import GenericGlobalAlert from '@/components/GenericGlobalAlert.vue'
 
+// --- Imports para el Easter Egg (controlado por VITE_CUBEGG_ENABLED) ---
+import { ref, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { router } from '@inertiajs/vue3';
 
-// // --- Imports para el Easter Egg ---
-// import { ref, onMounted, onUnmounted } from 'vue';
-// // ¡Importante! Importamos el 'router' de Inertia, NO de vue-router
-// import { router } from '@inertiajs/vue3'; 
-// // import CubEgg from '@/components/CubEgg.vue';
+// Carga asíncrona del CubEgg para no afectar el bundle principal
+const CubEgg = defineAsyncComponent(() =>
+  import('@/components/LayoutComponents/CubEgg.vue')
+);
 
-// --- Tus props originales ---
 interface Props {
     breadcrumbs?: BreadcrumbItemType[];
 }
@@ -23,50 +22,52 @@ withDefaults(defineProps<Props>(), {
 
 // ========================================================================
 // --- LÓGICA DEL EASTER EGG (VERSIÓN INERTIA.JS) ---
+// Se activa SOLO si VITE_CUBEGG_ENABLED=true en el .env
 // ========================================================================
+const cubeggEnabled = import.meta.env.VITE_CUBEGG_ENABLED === 'true';
+const showEasterEgg = ref(false);
+const routeHistory = ref<string[]>([]);
+const secretRouteSequence = ['/tdp', '/consulta-reporte', '/consulta-gerencial'];
 
-// const showEasterEgg = ref(false);
-// const routeHistory = ref<string[]>([]);
-// const secretRouteSequence = ['/tdp', '/consulta-reporte', '/consulta-gerencial']; 
+let removeInertiaListener: (() => void) | null = null;
 
-// // Variable para guardar la función que elimina el listener y evitar fugas de memoria
-// let removeInertiaListener: () => void;
+onMounted(() => {
+  if (!cubeggEnabled) return;
 
-// onMounted(() => {
-//   // En lugar de 'watch', nos suscribimos al evento 'success' de Inertia.
-//   // Este evento se dispara cada vez que una visita a una página se completa con éxito.
-//   removeInertiaListener = router.on('success', (event) => {
-//     const newPath = event.detail.page.url; // Obtenemos la nueva URL del evento
-//     console.log(`Inertia navigation success: ${newPath}`);
+  removeInertiaListener = router.on('success', (event) => {
+    const newPath = new URL(event.detail.page.url, window.location.origin).pathname;
 
-//     routeHistory.value.push(newPath);
-//     const lastVisited = routeHistory.value.slice(-secretRouteSequence.length);
+    routeHistory.value.push(newPath);
 
-//     if (JSON.stringify(lastVisited) === JSON.stringify(secretRouteSequence)) {
-//         showEasterEgg.value = !showEasterEgg.value;
-//         console.log(`SECUENCIA SECRETA DETECTADA. Easter Egg: ${showEasterEgg.value ? 'ON' : 'OFF'}`);
-//         routeHistory.value = [];
-//     }
-//   });
-// });
+    // Solo mantener las últimas N rutas necesarias
+    if (routeHistory.value.length > secretRouteSequence.length) {
+      routeHistory.value = routeHistory.value.slice(-secretRouteSequence.length);
+    }
 
-// onUnmounted(() => {
-//   // Cuando el componente se destruye, es CRUCIAL eliminar el listener
-//   // para evitar que se siga ejecutando y cause problemas de memoria.
-//   if (removeInertiaListener) {
-//     removeInertiaListener();
-//   }
-// });
+    const lastVisited = routeHistory.value.slice(-secretRouteSequence.length);
 
+    if (lastVisited.length === secretRouteSequence.length &&
+        JSON.stringify(lastVisited) === JSON.stringify(secretRouteSequence)) {
+      showEasterEgg.value = !showEasterEgg.value;
+      routeHistory.value = [];
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (removeInertiaListener) {
+    removeInertiaListener();
+  }
+});
 </script>
 
 <template>
-    <div> 
+    <div>
         <AppLayout :breadcrumbs="breadcrumbs">
              <GenericGlobalAlert />
             <slot />
         </AppLayout>
 
-        <!-- <CubEgg v-if="showEasterEgg" /> -->
+        <CubEgg v-if="cubeggEnabled && showEasterEgg" @close="showEasterEgg = false" />
     </div>
 </template>

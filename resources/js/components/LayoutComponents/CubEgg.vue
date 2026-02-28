@@ -1,30 +1,31 @@
-<!-- resources/js/components/CubEgg.vue -->
+<!-- resources/js/components/LayoutComponents/CubEgg.vue -->
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue';
 import * as THREE from 'three';
-import { gsap } from 'gsap'; // ¡La herramienta correcta para animaciones!
+import { gsap } from 'gsap';
 
-// --- Estado y Refs ---
+const emit = defineEmits(['close']);
+
 const canvasRef = ref(null);
-const hasInteracted = ref(false); // El audio requiere interacción del usuario
+const hasInteracted = ref(false);
+const isVisible = ref(true);
 
-// Variables de Three.js que necesitamos mantener
 let renderer, scene, camera, cube, listener, sound;
 let animationFrameId;
+let resizeHandler;
 let isAutoRotating = true;
 let currentFaceIndex = 0;
+let audioLoaded = false;
 
-// Las rotaciones objetivo para cada cara (en radianes, como debe ser)
 const faceRotations = [
-    { x: 0, y: 0 }, // Frontal
-    { x: 0, y: Math.PI / 2 }, // Derecha
-    { x: 0, y: Math.PI }, // Trasera
-    { x: 0, y: -Math.PI / 2 }, // Izquierda
-    { x: -Math.PI / 2, y: 0 }, // Superior
-    { x: Math.PI / 2, y: 0 } // Inferior
+    { x: 0, y: 0 },
+    { x: 0, y: Math.PI / 2 },
+    { x: 0, y: Math.PI },
+    { x: 0, y: -Math.PI / 2 },
+    { x: -Math.PI / 2, y: 0 },
+    { x: Math.PI / 2, y: 0 }
 ];
 
-// --- Ciclo de Vida ---
 onMounted(() => {
   initScene();
   initEventListeners();
@@ -32,47 +33,64 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  // Limpieza. No dejes basura en memoria.
-  cancelAnimationFrame(animationFrameId);
-  window.removeEventListener('keydown', handleKeyDown);
-  if (sound && sound.isPlaying) sound.stop();
-  renderer.dispose();
+  cleanup();
 });
 
-// --- Inicialización ---
+const cleanup = () => {
+  cancelAnimationFrame(animationFrameId);
+  window.removeEventListener('keydown', handleKeyDown);
+  if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+  if (sound && sound.isPlaying) sound.stop();
+  if (renderer) renderer.dispose();
+  if (cube) {
+    cube.geometry.dispose();
+    if (Array.isArray(cube.material)) {
+      cube.material.forEach(m => {
+        if (m.map) m.map.dispose();
+        m.dispose();
+      });
+    }
+  }
+};
+
 const initScene = () => {
-  // 1. Escena y Cámara
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.z = 3;
 
-  // 2. Renderizador con FONDO TRANSPARENTE. Esto es lo que querías.
   renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
-    alpha: true, // ¡CLAVE!
+    alpha: true,
     antialias: true
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  // 3. Luces. Sin luces, los materiales estándar se ven negros.
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
   scene.add(ambientLight);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
   directionalLight.position.set(1, 2, 3);
   scene.add(directionalLight);
 
-  // 4. El Cubo (La forma correcta)
   const textureLoader = new THREE.TextureLoader();
   const textureFiles = [
     '/textures/cara1.png', '/textures/cara2.png', '/textures/cara3.png',
     '/textures/cara4.png', '/textures/cara5.png', '/textures/cara6.png'
   ];
-  
-  // Se crea un array de materiales. Uno para cada cara.
-  // Esto es mucho más limpio que tu bucle de dibujo.
-  const materials = textureFiles.map(file => {
-      const texture = textureLoader.load(file);
+
+  const fallbackColors = [0x3498db, 0x2ecc71, 0xe74c3c, 0x9b59b6, 0xf1c40f, 0xe67e22];
+
+  const materials = textureFiles.map((file, i) => {
+      const texture = textureLoader.load(
+        file,
+        undefined,
+        undefined,
+        () => {
+          // Si la textura falla, usar color sólido como fallback
+          materials[i] = new THREE.MeshStandardMaterial({ color: fallbackColors[i] });
+          if (cube) cube.material = materials;
+        }
+      );
       return new THREE.MeshStandardMaterial({ map: texture });
   });
 
@@ -80,33 +98,51 @@ const initScene = () => {
   cube = new THREE.Mesh(geometry, materials);
   scene.add(cube);
 
-  // 5. El Audio (La forma sana)
-  listener = new THREE.AudioListener();
-  camera.add(listener);
-  sound = new THREE.PositionalAudio(listener);
-  const audioLoader = new THREE.AudioLoader();
-  audioLoader.load('/sounds/audio.wav', (buffer) => {
-    sound.setBuffer(buffer);
-    sound.setLoop(true);
-    sound.setVolume(0.5);
-    // No reproducir hasta que el usuario haga clic.
-  });
-  cube.add(sound);
+  // Audio (opcional - no rompe si el archivo no existe)
+  try {
+    listener = new THREE.AudioListener();
+    camera.add(listener);
+    sound = new THREE.PositionalAudio(listener);
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load(
+      '/sounds/audio.wav',
+      (buffer) => {
+        sound.setBuffer(buffer);
+        sound.setLoop(true);
+        sound.setVolume(0.5);
+        audioLoaded = true;
+      },
+      undefined,
+      () => {
+        // Audio no disponible, no es crítico
+        audioLoaded = false;
+      }
+    );
+    cube.add(sound);
+  } catch {
+    audioLoaded = false;
+  }
 };
 
-// --- Lógica de Animación y Controles ---
 const animate = () => {
   animationFrameId = requestAnimationFrame(animate);
 
-  if (isAutoRotating) {
+  if (isAutoRotating && cube) {
     cube.rotation.y += 0.005;
     cube.rotation.x += 0.003;
   }
 
-  renderer.render(scene, camera);
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
 };
 
 const handleKeyDown = (event) => {
+    if (event.key === 'Escape') {
+        emit('close');
+        return;
+    }
+
     isAutoRotating = false;
 
     switch (event.key) {
@@ -118,13 +154,13 @@ const handleKeyDown = (event) => {
             currentFaceIndex = (currentFaceIndex - 1 + faceRotations.length) % faceRotations.length;
             snapToFace();
             break;
-        case ' ': // Espacio
+        case ' ':
             isAutoRotating = true;
             break;
         case 'm':
             toggleSound();
             break;
-        case '=': // +
+        case '=':
         case '+':
             changePlaybackSpeed(0.1);
             break;
@@ -136,38 +172,34 @@ const handleKeyDown = (event) => {
 };
 
 const snapToFace = () => {
-    // GSAP hace el trabajo sucio de la animación.
-    // Anima las propiedades de rotación del cubo a los valores objetivo.
+    if (!cube) return;
     gsap.to(cube.rotation, {
-        duration: 0.75, // Duración de la animación
+        duration: 0.75,
         x: faceRotations[currentFaceIndex].x,
         y: faceRotations[currentFaceIndex].y,
-        ease: 'power2.out' // Una curva de aceleración agradable
+        ease: 'power2.out'
     });
 };
 
 const changePlaybackSpeed = (delta) => {
-    if (sound) {
-        // ¿Ves? Una simple propiedad. Sin reiniciar nada.
+    if (sound && audioLoaded) {
         sound.playbackRate = Math.max(0.1, Math.min(3, sound.playbackRate + delta));
-        console.log(`Velocidad de audio: ${sound.playbackRate.toFixed(2)}x`);
     }
 };
 
 const toggleSound = () => {
+    if (!audioLoaded) return;
     if (sound && sound.isPlaying) {
         sound.pause();
     } else if (sound && !sound.isPlaying && hasInteracted.value) {
         sound.play();
     }
-}
+};
 
-// Los navegadores bloquean el audio hasta que el usuario interactúa.
-// Esta función maneja el primer clic.
 const handleClickToPlay = () => {
   if (!hasInteracted.value) {
     hasInteracted.value = true;
-    if (sound && !sound.isPlaying) {
+    if (audioLoaded && sound && !sound.isPlaying) {
       sound.play();
     }
   }
@@ -175,24 +207,32 @@ const handleClickToPlay = () => {
 
 const initEventListeners = () => {
   window.addEventListener('keydown', handleKeyDown);
-  // También maneja el redimensionamiento de la ventana
-  window.addEventListener('resize', () => {
+  resizeHandler = () => {
+    if (!camera || !renderer) return;
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  });
+  };
+  window.addEventListener('resize', resizeHandler);
 };
 </script>
 
 
 <template>
-  <div class="easter-egg-container" @click="handleClickToPlay">
-    <canvas ref="canvasRef"></canvas>
-    <div v-if="!hasInteracted" class="interaction-overlay">
-      Haz clic para iniciar el audio
+  <Transition name="fade">
+    <div v-if="isVisible" class="easter-egg-container" @click="handleClickToPlay">
+      <canvas ref="canvasRef"></canvas>
+      <div v-if="!hasInteracted" class="interaction-overlay">
+        <div class="overlay-content">
+          <p class="overlay-title">Easter Egg Activado</p>
+          <p class="overlay-subtitle">Haz clic para comenzar</p>
+          <p class="overlay-hint">ESC para cerrar | Flechas para rotar | Espacio para auto-rotación | M para sonido</p>
+        </div>
+      </div>
+      <button class="close-btn" @click.stop="emit('close')" title="Cerrar (ESC)">✕</button>
     </div>
-  </div>
+  </Transition>
 </template>
 
 
@@ -205,6 +245,7 @@ const initEventListeners = () => {
   height: 100%;
   z-index: 9999;
   outline: none;
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .interaction-overlay {
@@ -216,15 +257,68 @@ const initEventListeners = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
-  font-size: 2rem;
-  font-family: sans-serif;
+  background-color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
   z-index: 10000;
 }
 
+.overlay-content {
+  text-align: center;
+  color: white;
+  font-family: sans-serif;
+}
+
+.overlay-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.overlay-subtitle {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+
+.overlay-hint {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10001;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 canvas {
   display: block;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
