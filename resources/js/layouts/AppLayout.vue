@@ -27,12 +27,17 @@ withDefaults(defineProps<Props>(), {
 const cubeggEnabled = import.meta.env.VITE_CUBEGG_ENABLED === 'true';
 const showEasterEgg = ref(false);
 const routeHistory = ref<string[]>([]);
-const secretRouteSequence = ['/tdp', '/consulta-reporte', '/consulta-gerencial'];
+const secretRouteSequence = ['/consulta-reporte', '/preguntas', '/consulta-gerencial'];
 
 let removeInertiaListener: (() => void) | null = null;
 
 onMounted(() => {
-  if (!cubeggEnabled) return;
+  if (!cubeggEnabled) {
+    console.log('[CubEgg] ❌ Desactivado (VITE_CUBEGG_ENABLED no es "true")');
+    return;
+  }
+
+  console.log('[CubEgg] ✅ Activado. Secuencia secreta:', secretRouteSequence);
 
   removeInertiaListener = router.on('success', (event) => {
     const newPath = new URL(event.detail.page.url, window.location.origin).pathname;
@@ -46,8 +51,11 @@ onMounted(() => {
 
     const lastVisited = routeHistory.value.slice(-secretRouteSequence.length);
 
+    console.log('[CubEgg] Navegación:', newPath, '| Historial:', lastVisited, '| Esperado:', secretRouteSequence);
+
     if (lastVisited.length === secretRouteSequence.length &&
         JSON.stringify(lastVisited) === JSON.stringify(secretRouteSequence)) {
+      console.log('[CubEgg] 🎉 ¡Secuencia completada! Activando Easter Egg');
       showEasterEgg.value = !showEasterEgg.value;
       routeHistory.value = [];
     }
