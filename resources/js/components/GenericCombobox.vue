@@ -1,6 +1,6 @@
 <!-- resources/js/components/GenericCombobox.vue -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { ComboboxRoot, ComboboxAnchor, ComboboxInput, ComboboxCancel, ComboboxPortal, ComboboxContent, ComboboxViewport, ComboboxItem, ComboboxEmpty } from 'reka-ui';
 import { debounce } from 'lodash';
 
@@ -83,6 +83,13 @@ const debouncedDynamicSearch = debounce((term: string) => {
   }
 }, 500);
 
+let typingTimer: number | undefined;
+
+onUnmounted(() => {
+  debouncedDynamicSearch.cancel();
+  if (typingTimer !== undefined) clearTimeout(typingTimer);
+});
+
 //Función para enfocar el input
 const focusInput = () => {
   // Intentamos enfocar el $el (elemento raíz del componente)
@@ -130,7 +137,7 @@ watch(searchTerm, (newTerm, oldTerm) => {
     }
   }
   // Restablecer isTyping después de un tiempo
-  setTimeout(() => {
+  typingTimer = window.setTimeout(() => {
     isTyping.value = false;
   }, 100);
 });

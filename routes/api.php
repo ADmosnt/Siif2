@@ -34,16 +34,13 @@ use App\Http\Controllers\Gerencial\gps\gpsController;
 Route::post('/login', [ApiAuthController::class, 'login']);
 
 // ================================
-// RUTAS GPS (consultas externas)
-// ================================
-
-Route::get('/gerencial/gps/ruta', [gpsController::class, 'obtenerRuta'])->name('gps.obtenerRuta');
-
-// ================================
 // RUTAS PROTEGIDAS (requieren token Sanctum)
 // ================================
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    // --- GPS ---
+    Route::get('/gerencial/gps/ruta', [gpsController::class, 'obtenerRuta'])->name('gps.obtenerRuta');
 
     // --- AUTENTICACIÓN ---
     Route::post('/logout', [ApiAuthController::class, 'logout']);

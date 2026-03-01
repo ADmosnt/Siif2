@@ -28,8 +28,8 @@ class ProductoAdminController extends Controller
         $tipo = $request->route()->defaults['tipo'] ?? null;
 
         if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
-            $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
-            
+            $this->accessControl->logUnauthorizedAccess('Administración de Productos');
+
             return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
         }
         try {
@@ -110,21 +110,37 @@ class ProductoAdminController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            $this->accessControl->logUnauthorizedAccess('Administración de Productos');
+            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para realizar esta acción.');
+        }
+
         $tipo = $request->route()->defaults['tipo'] ?? null;
 
         try {
-            $this->productoService->actualizarProducto($id, $request->all());
+            $validated = $request->only([
+                'id', 'producto', 'existencia', 'linea', 'tipo_producto',
+                'mayorista', 'fecha_vencimiento', 'fecha_registro',
+                'presentacion', 'lote', 'precio', 'descuento',
+            ]);
+            $this->productoService->actualizarProducto($id, $validated);
             return back()->with('success', 'Registro actualizado');
         } catch (\Throwable $e) {
             Log::error('ProductoAdminController@update error', ['exception' => $e->getMessage(), 'id' => $id, 'tipo' => $tipo]);
             return back()->with('error', 'Ocurrió un error al actualizar el registro');
         }
     }
-        /**
+
+    /**
      * Eliminación lógica (idestatus = 0)
      */
     public function destroy(Request $request, $id)
     {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            $this->accessControl->logUnauthorizedAccess('Administración de Productos');
+            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para realizar esta acción.');
+        }
+
         try {
             $this->productoService->eliminarProducto($id);
             return back()->with('success', 'Registro eliminado');

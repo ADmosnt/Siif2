@@ -98,18 +98,16 @@ class OptionsController extends Controller
 
     private function searchCiudades($term, $filters, $page, $perPage)
     {
-        $query = TCiudade::orderBy('nombreCiudad');  
+        $query = TCiudade::orderBy('nombreCiudad');
 
         // Filtrar por estado si está seleccionado
         if (!empty($filters['estado'])) {
             $estadoId = is_array($filters['estado']) ? ($filters['estado']['value'] ?? null) : $filters['estado'];
-            $query->where('idestado', $estadoId);
-        }
 
             if ($estadoId) {
-            $query->where('idestado', $estadoId);
+                $query->where('idestado', $estadoId);
             }
-        else {
+        } else {
             return ['data' => [], 'has_more' => false];
         }
         if ($term) {

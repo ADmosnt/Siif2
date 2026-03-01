@@ -80,9 +80,16 @@ class ProcesarOrdenController extends Controller
         $totalUnidades = 0;
         $productosCalculados = [];
 
+        // Pre-cargar todos los productos para evitar N+1
+        $productoIds = collect($request->productos)->pluck('id')->toArray();
+        $productosDb = TProducto::withoutGlobalScopes()->whereIn('idproducto', $productoIds)->get()->keyBy('idproducto');
+
         foreach ($request->productos as $index => $producto) {
-            $productoModel = TProducto::withoutGlobalScopes()->findOrFail($producto['id']);
-            $precioReal = $productoModel->Precio_producto; 
+            $productoModel = $productosDb[$producto['id']] ?? null;
+            if (!$productoModel) {
+                throw ValidationException::withMessages(['productos' => "Producto {$producto['id']} no encontrado"]);
+            }
+            $precioReal = $productoModel->Precio_producto;
             
             if (abs($producto['precio'] - $precioReal) > 0.01) {
                 Log::warning('Precio alterado detectado', [

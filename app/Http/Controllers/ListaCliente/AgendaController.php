@@ -77,11 +77,9 @@ class AgendaController extends Controller
         }
 
         return Excel::download(
-            new AgendaExport($datos), 
+            new AgendaExport($datos),
             $nombreArchivo . now()->format('Ymd_His') . '.xlsx'
         );
-
-            return Excel::download(new AgendaExport($datos), 'agenda_' . now()->format('Ymd_His') . '.xlsx');
         } catch (\Exception $e) {
             return back()->with('error', 'Error al exportar.');
         }

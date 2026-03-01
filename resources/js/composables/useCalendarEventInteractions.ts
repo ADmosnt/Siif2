@@ -474,8 +474,11 @@ export function useCalendarEventInteractions(
     calculatePosition(options.viewType)
   }
 
-  // Cleanup
-  onUnmounted(stopResize)
+  // Cleanup: ensure both drag and resize listeners are removed
+  onUnmounted(() => {
+    stopResize()
+    stopDrag()
+  })
 
   return {
     position,

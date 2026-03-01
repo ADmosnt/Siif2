@@ -140,7 +140,6 @@ Route::middleware(['auth',])->group(function () {
 
     // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
     Route::get('/notificacion', fn() => Inertia::render('Notificacion'))->name('notificacion');
-    Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
     Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
     Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
     Route::get('/Contacto', fn() => Inertia::render('Contacto'))->name('Contacto');
@@ -151,31 +150,23 @@ Route::middleware(['auth',])->group(function () {
     // ========================================
     Route::post('/contacto', [ContactController::class, 'send'])->name('contact.send');
 
+    // --- UPLOAD ---
+    Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
+    Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
+    Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
+
+    // --- EXPORT ---
+    Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
+    Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
+    Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
+
+    // --- EXPORT PDF y EXCEL ---
+    Route::get('/gerencial/export/pdf', [gerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
+    Route::get('/gerencial/export/excel', [gerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
 });
 
-// ================================
-// 3. RUTAS DE UPLOAD Y EXPORT
-// ================================
-// UPLOAD
-Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
-Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
-Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
-
-// EXPORT
-Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
-Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
-Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
-    
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
-
-// =====================================
-// 4. RUTAS DE EXPORT PDF y EXCEL
-// =====================================
-
-Route::get('/gerencial/export/pdf', [GerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
-Route::get('/gerencial/export/excel', [GerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
 
 
 

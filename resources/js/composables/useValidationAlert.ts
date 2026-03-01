@@ -82,8 +82,6 @@ export function useValidationAlert(): AlertState {
           setTimeout(() => {
               if (messageOrigin.value === 'flash') {
                   clear();
-                  // También limpia los flash messages en page props
-                  page.props.flash = {};
               }
           }, 5000);
       }

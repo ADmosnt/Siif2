@@ -34,8 +34,8 @@ class TmpPlanificadorController extends Controller
     public function index(Request $request)
     {
         if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP', 'RFV'])) {
-            $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
-            
+            $this->accessControl->logUnauthorizedAccess('Planificador de Visitas');
+
             return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
         }
         return Inertia::render('RTR/Calendario', [

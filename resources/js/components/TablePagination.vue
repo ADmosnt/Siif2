@@ -98,18 +98,16 @@ function nextPage() {
             v-if="link.url"
             :href="link.url"
             preserve-scroll
-            v-html="link.label"
             class="px-3 py-1.5 text-sm rounded-md"
             :class="{
               'bg-blue-600 text-white hover:bg-blue-700': link.active,
               'hover:bg-gray-100 dark:hover:bg-gray-700': !link.active,
             }"
-          />
+          >{{ link.label.replace(/&laquo;/g, '\u00AB').replace(/&raquo;/g, '\u00BB') }}</Link>
           <span
             v-else
-            v-html="link.label"
             class="px-3 py-1.5 text-sm text-gray-400 cursor-not-allowed"
-          />
+          >{{ link.label.replace(/&laquo;/g, '\u00AB').replace(/&raquo;/g, '\u00BB') }}</span>
         </template>
       </div>
 

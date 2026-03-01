@@ -33,7 +33,7 @@ class PersonaAdminController extends Controller
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
         if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
-            $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
+            $this->accessControl->logUnauthorizedAccess('Administración de Personas');
             return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
         }
 
@@ -188,10 +188,21 @@ class PersonaAdminController extends Controller
      */
     public function update(Request $request, $id)
     {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            $this->accessControl->logUnauthorizedAccess('Administración de Personas');
+            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para realizar esta acción.');
+        }
+
         $tipo = $request->route()->defaults['tipo'] ?? null;
 
         try {
-            $this->personaService->actualizarPersona($id, $request->all());
+            $validated = $request->only([
+                'nombre', 'apellido', 'tipo_doc', 'documento', 'email',
+                'telefono', 'direccion', 'pais', 'estado', 'ciudad',
+                'especialidad', 'clase', 'ranking', 'frecuencia',
+                'supervisor', 'ciclo', 'descuento', 'username',
+            ]);
+            $this->personaService->actualizarPersona($id, $validated);
             return back()->with('success', 'Registro actualizado');
         } catch (\Throwable $e) {
             Log::error('PersonaAdminController@update error', ['exception' => $e->getMessage(), 'id' => $id, 'tipo' => $tipo]);
@@ -204,6 +215,11 @@ class PersonaAdminController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            $this->accessControl->logUnauthorizedAccess('Administración de Personas');
+            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para realizar esta acción.');
+        }
+
         try {
             $this->personaService->eliminarPersona($id);
             return back()->with('success', 'Registro eliminado');

@@ -45,6 +45,21 @@ class ConciliarFacturaController extends Controller
         
 
         $orden = TOrdene::withoutGlobalScopes()->find($request->norden);
+
+        if (!$orden) {
+            return redirect()->back()->withInput()->with('error', 'Orden no encontrada');
+        }
+
+        // Verificar que la orden pertenezca al fabricante del usuario
+        $user = auth()->user();
+        if ($orden->idFabricante !== $user->idFabricante || $orden->idOperador !== $user->idOperador) {
+            Log::warning('Intento de acceso no autorizado a orden', [
+                'orden_id' => $request->norden,
+                'user_id' => $user->id,
+            ]);
+            return redirect()->back()->withInput()->with('error', 'No tienes acceso a esta orden');
+        }
+
         $impuestoReal = $orden->impuesto;
 
         if (abs($request->impuesto - $impuestoReal) > 0.01) {
@@ -82,9 +97,15 @@ class ConciliarFacturaController extends Controller
         $totalFaltantes = 0;
         $productosActualizados = [];
 
+        // Pre-cargar todos los productos para evitar N+1
+        $productoIds = collect($request->productos)->pluck('id')->toArray();
+        $productosDb = TProducto::withoutGlobalScopes()->whereIn('idproducto', $productoIds)->get()->keyBy('idproducto');
+
         foreach ($request->productos as $producto) {
-            
-            $productoModel = TProducto::withoutGlobalScopes()->findOrFail($producto['id']);
+            $productoModel = $productosDb[$producto['id']] ?? null;
+            if (!$productoModel) {
+                return redirect()->back()->withInput()->with('error', "Producto {$producto['id']} no encontrado");
+            }
             $precioReal = $productoModel->Precio_producto;
 
             if (abs($producto['precio'] - $precioReal) > 0.01) {

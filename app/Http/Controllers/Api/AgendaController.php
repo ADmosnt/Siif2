@@ -184,15 +184,17 @@ class AgendaController extends Controller
     {
         $user = Auth::user();
 
-        $clientes = $user->Clientes()->get(['idPersona', 'nombre_completo_razon_social', 'horaMin', 'horaMax']);
+        $clientes = $user->Clientes()
+            ->with('Dias:descripcion_dias_visita')
+            ->get(['idPersona', 'nombre_completo_razon_social', 'horaMin', 'horaMax']);
 
         if ($clientes->isEmpty()) {
             return response()->json(['error' => 'No tiene clientes asignados'], 200);
         }
 
         foreach ($clientes as $cliente) {
-            $dias = TPersona::find($cliente->idPersona)?->Dias()->get(['descripcion_dias_visita']);
-            $cliente->diasDisponible = $dias ?? collect();
+            $cliente->diasDisponible = $cliente->Dias;
+            unset($cliente->Dias);
         }
 
         return response()->json([
