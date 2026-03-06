@@ -9,6 +9,7 @@ import { ZiggyVue } from 'ziggy-js'
 import { initializeTheme } from './composables/useAppearance'
 import { setupAxiosInterceptors } from './plugins/axiosInterceptors'
 import { setupInertiaAlerts } from './plugins/inertiaAlerts'
+import OfflineBanner from './components/OfflineBanner.vue'
 import axios from 'axios'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel'
@@ -21,7 +22,9 @@ createInertiaApp({
       import.meta.glob<DefineComponent>('./pages/**/*.vue')
     ),
   setup({ el, App, props, plugin }) {
-    const app = createApp({ render: () => h(App, props) })
+    const app = createApp({
+      render: () => [h(OfflineBanner), h(App, props)],
+    })
     const pinia = createPinia()
 
     app.use(plugin)      // Inertia primero
