@@ -139,7 +139,7 @@ Route::middleware(['auth',])->group(function () {
     Route::delete('/tmp-planificaciones/{id}', [TmpPlanificadorController::class, 'destroy'])->name('tmp_planificaciones.destroy');
 
     // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
-    Route::get('/notificacion', fn() => Inertia::render('Notificacion'))->name('notificacion');
+    Route::get('/notificacion', [\App\Http\Controllers\NotificacionWebController::class, 'index'])->name('notificacion');
     Route::post('/notificacion/enviar', [\App\Http\Controllers\NotificacionPushController::class, 'enviar'])->name('notificacion.enviar');
 
     // --- PUSH SUBSCRIPTIONS (PWA) ---
