@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\NotificacionResource;
 use App\Models\TNotificacion;
+use App\Models\TPersona;
+use App\Models\TTipoNotificacion;
+use App\Notifications\SiifPushNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
@@ -47,7 +51,7 @@ class NotificacionController extends Controller
 
         $user = Auth::user();
 
-        TNotificacion::create([
+        $notificacion = TNotificacion::create([
             'idOperador' => $user->idOperador,
             'idFabricante' => $user->idFabricante,
             'idPersona' => $user->idPersona,
@@ -56,6 +60,28 @@ class NotificacionController extends Controller
             'fecha_registro' => Carbon::now(),
             'idestatus' => 1,
         ]);
+
+        // Enviar push notification a los RFV del fabricante
+        $gruposPermitidos = [TPersona::TIPO_ADMINISTRADOR, TPersona::TIPO_GERENTE, TPersona::TIPO_SUPERVISOR];
+        if (in_array($user->idgrupo_persona, $gruposPermitidos)) {
+            $titulo = TTipoNotificacion::find($request->idtipo)?->titulo ?? 'SIIF2 - Notificación';
+
+            $destinatarios = TPersona::where('idFabricante', $user->idFabricante)
+                ->where('idgrupo_persona', TPersona::TIPO_REPRESENTANTE)
+                ->where('idestatus', 1)
+                ->whereHas('pushSubscriptions')
+                ->get();
+
+            foreach ($destinatarios as $destinatario) {
+                $destinatario->notify(new SiifPushNotification(
+                    $titulo,
+                    $request->descripcion,
+                    $notificacion->idNotificacion
+                ));
+            }
+
+            Log::info('Push enviado desde API', ['emisor' => $user->name, 'destinatarios' => $destinatarios->count()]);
+        }
 
         return response()->json(['success' => 'Notificación creada']);
     }

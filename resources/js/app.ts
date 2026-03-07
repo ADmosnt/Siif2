@@ -10,6 +10,7 @@ import { initializeTheme } from './composables/useAppearance'
 import { setupAxiosInterceptors } from './plugins/axiosInterceptors'
 import { setupInertiaAlerts } from './plugins/inertiaAlerts'
 import OfflineBanner from './components/OfflineBanner.vue'
+import PushNotificationPrompt from './components/PushNotificationPrompt.vue'
 import axios from 'axios'
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel'
@@ -23,7 +24,7 @@ createInertiaApp({
     ),
   setup({ el, App, props, plugin }) {
     const app = createApp({
-      render: () => [h(OfflineBanner), h(App, props)],
+      render: () => [h(OfflineBanner), h(PushNotificationPrompt), h(App, props)],
     })
     const pinia = createPinia()
 
@@ -45,3 +46,12 @@ createInertiaApp({
 })
 
 initializeTheme()
+
+// Registrar Service Worker para PWA y Push Notifications
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.warn('Service Worker registration failed:', error)
+    })
+  })
+}

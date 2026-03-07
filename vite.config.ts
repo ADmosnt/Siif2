@@ -21,39 +21,9 @@ export default defineConfig({
         tailwindcss(),
         VitePWA({
             registerType: 'autoUpdate',
-            includeAssets: ['favicon.ico'],
-            manifest: {
-                name: 'SIIF2 - Sistema Integral de Información',
-                short_name: 'SIIF2',
-                description: 'Sistema Integral de Información y Fuerza de Ventas',
-                theme_color: '#4B5563',
-                background_color: '#ffffff',
-                display: 'standalone',
-                orientation: 'portrait',
-                scope: '/',
-                start_url: '/',
-                icons: [
-                    {
-                        src: '/pwa-192x192.png',
-                        sizes: '192x192',
-                        type: 'image/png',
-                    },
-                    {
-                        src: '/pwa-512x512.png',
-                        sizes: '512x512',
-                        type: 'image/png',
-                    },
-                    {
-                        src: '/pwa-512x512.png',
-                        sizes: '512x512',
-                        type: 'image/png',
-                        purpose: 'any maskable',
-                    },
-                ],
-            },
+            manifest: false, // Usamos manifest.json manual en public/
+            includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
             workbox: {
-                // Solo cache de assets estáticos (CSS, JS, fuentes)
-                // No cachear rutas de navegación para evitar problemas con Inertia
                 globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
                 navigateFallback: null,
                 runtimeCaching: [
@@ -64,7 +34,7 @@ export default defineConfig({
                             cacheName: 'bunny-fonts-cache',
                             expiration: {
                                 maxEntries: 10,
-                                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 año
+                                maxAgeSeconds: 60 * 60 * 24 * 365,
                             },
                             cacheableResponse: {
                                 statuses: [0, 200],

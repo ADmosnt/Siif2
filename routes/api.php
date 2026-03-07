@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\RepresentanteController;
 use App\Http\Controllers\Api\MayoristaController;
 use App\Http\Controllers\Api\TipoActividadController;
 use App\Http\Controllers\Api\IncidenteController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Gerencial\gps\gpsController;
 
 /*
@@ -111,4 +112,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/eliminar', [NotificacionController::class, 'destroy']);
         Route::post('/vista', [NotificacionController::class, 'marcarVista']);
     });
+
+    // --- PUSH SUBSCRIPTIONS ---
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'store']);
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy']);
 });

@@ -2,110 +2,180 @@
 
 ## Resumen
 
-Se implementó soporte PWA (Progressive Web App) en SIIF2 utilizando `vite-plugin-pwa`. Esto permite que la aplicación web sea **instalable** en dispositivos móviles y de escritorio como si fuera una app nativa.
+Se implementó soporte PWA (Progressive Web App) en SIIF2 utilizando `vite-plugin-pwa` y notificaciones push con `laravel-notification-channels/webpush`. Esto permite que la aplicación web sea **instalable** en dispositivos móviles, muestre alertas de desconexión, y envíe **notificaciones push reales** al teléfono de los vendedores.
 
 ## ¿Qué es una PWA?
 
 Una PWA convierte tu aplicación web en una app instalable. Los usuarios pueden:
 - **Instalarla** desde el navegador (Chrome, Edge, Safari) directamente en su dispositivo
-- **Abrirla** como una app independiente (sin barra de navegador)
-- **Recibir alertas** cuando pierden conexión a internet
+- **Abrirla** como una app independiente (sin barra de navegador) - requiere HTTPS
+- **Recibir notificaciones push** en su teléfono aunque la app esté cerrada
+- **Ver alertas** cuando pierden conexión a internet
 
-## Archivos Modificados
+**IMPORTANTE**: El modo standalone (sin barra de navegador) requiere **HTTPS**. En desarrollo local con HTTP, la app funcionará pero mostrará la barra del navegador.
 
-### 1. `vite.config.ts` (NUEVO)
-- Configuración de Vite con todos los plugins necesarios: `laravel-vite-plugin`, `@vitejs/plugin-vue`, `@tailwindcss/vite` y `vite-plugin-pwa`
-- El manifest PWA define: nombre, colores, íconos y orientación de la app
-- Workbox configurado para cachear assets estáticos (JS, CSS, fuentes) pero NO rutas de navegación (para evitar conflictos con Inertia)
-- Cache de fuentes de Bunny Fonts con estrategia CacheFirst (1 año)
+---
 
-### 2. `package.json` (MODIFICADO)
-- Agregada dependencia `vite-plugin-pwa: ^0.21.1`
+## Archivos del Sistema
 
-### 3. `resources/views/app.blade.php` (MODIFICADO)
-- Agregados meta tags PWA:
-  - `theme-color`: Color de la barra de estado en móviles
-  - `mobile-web-app-capable` y `apple-mobile-web-app-capable`: Permite modo standalone
-  - `apple-mobile-web-app-status-bar-style`: Estilo de barra en iOS
-  - `apple-mobile-web-app-title`: Nombre en iOS
-  - `apple-touch-icon`: Ícono para iOS
+### PWA Base
 
-### 4. `resources/js/app.ts` (MODIFICADO)
-- Importa y renderiza el componente `OfflineBanner` en la raíz de la aplicación Vue
-- El banner se muestra encima de toda la app cuando se pierde conexión
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `vite.config.ts` | Nuevo | Configuración Vite con plugins (laravel, vue, tailwind, pwa) |
+| `public/manifest.json` | Nuevo | Manifest PWA (nombre, íconos, colores, modo standalone) |
+| `public/sw.js` | Nuevo | Service Worker para push notifications |
+| `public/pwa-192x192.png` | Nuevo | Ícono PWA 192x192 (placeholder, reemplazar con logo real) |
+| `public/pwa-512x512.png` | Nuevo | Ícono PWA 512x512 (placeholder, reemplazar con logo real) |
+| `package.json` | Modificado | Agregada dependencia `vite-plugin-pwa` |
+| `.gitignore` | Modificado | Removido `/vite.config.ts` del ignore |
 
-### 5. `resources/js/components/OfflineBanner.vue` (NUEVO)
-- Componente Vue que detecta conexión/desconexión en tiempo real
-- Muestra un banner rojo fijo en la parte superior de la pantalla cuando no hay internet
-- Desaparece automáticamente al reconectarse
-- Usa transiciones CSS suaves (slide-down)
-- z-index alto (9999) para estar siempre visible
+### Push Notifications (Backend)
 
-### 6. `public/pwa-192x192.png` y `public/pwa-512x512.png` (NUEVOS)
-- Íconos placeholder para el manifest PWA (color sólido #4B5563)
-- **IMPORTANTE**: Reemplazar con el logo real de SIIF2 antes de producción
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `composer.json` | Modificado | Agregado `laravel-notification-channels/webpush` |
+| `config/webpush.php` | Nuevo | Configuración VAPID (claves de push) |
+| `database/migrations/2025_07_01_000001_create_push_subscriptions_table.php` | Nuevo | Tabla para suscripciones push |
+| `app/Models/TPersona.php` | Modificado | Agregado trait `HasPushSubscriptions` |
+| `app/Notifications/SiifPushNotification.php` | Nuevo | Clase de notificación push |
+| `app/Http/Controllers/Api/PushSubscriptionController.php` | Nuevo | Suscribir/desuscribir push (API y web) |
+| `app/Http/Controllers/NotificacionPushController.php` | Nuevo | Envío de notificaciones con push (web, para SIIF/GRT/SUP) |
+| `app/Http/Controllers/Api/NotificacionController.php` | Modificado | Store ahora dispara push a vendedores |
+
+### Push Notifications (Frontend)
+
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `resources/views/app.blade.php` | Modificado | Meta tags PWA + manifest link + VAPID key |
+| `resources/js/app.ts` | Modificado | Registra SW, renderiza OfflineBanner y PushNotificationPrompt |
+| `resources/js/components/OfflineBanner.vue` | Nuevo | Banner rojo de desconexión |
+| `resources/js/components/PushNotificationPrompt.vue` | Nuevo | Prompt para activar notificaciones |
+
+### Rutas Agregadas
+
+| Ruta | Método | Descripción | Auth |
+|------|--------|-------------|------|
+| `/api/push/subscribe` | POST | Registrar suscripción push | Sanctum |
+| `/api/push/unsubscribe` | POST | Eliminar suscripción push | Sanctum |
+| `/push/subscribe` | POST | Registrar suscripción push (web) | Session |
+| `/push/unsubscribe` | POST | Eliminar suscripción push (web) | Session |
+| `/notificacion/enviar` | POST | Enviar notificación + push | Session |
+
+---
 
 ## Instalación
 
-Después de hacer pull de estos cambios, ejecutar:
+### 1. Dependencias
 
 ```bash
+composer install
 npm install
 ```
 
-Esto instalará `vite-plugin-pwa` y sus dependencias (`workbox-*`).
+### 2. Generar claves VAPID
 
-## Cómo funciona
+```bash
+php artisan webpush:vapid
+```
 
-### En desarrollo (`npm run dev`)
-- El service worker NO se registra en modo desarrollo
-- El componente `OfflineBanner` sí funciona (detecta desconexión)
-- Para probar el PWA completo, hacer `npm run build` y servir desde Laravel
+Esto agrega automáticamente a tu `.env`:
+```
+VAPID_PUBLIC_KEY=BXXXXXXXXXXXXXXXXXX...
+VAPID_PRIVATE_KEY=XXXXXXXXXXXXXXXX...
+```
 
-### En producción (`npm run build`)
-- Vite genera automáticamente:
-  - `manifest.webmanifest` en `/build/`
-  - Service Worker (`sw.js`) en la raíz pública
-  - Assets pre-cacheados
-- El service worker se auto-actualiza cuando hay nuevas versiones
-- Los assets estáticos se cachean para carga rápida
+### 3. Migrar la tabla de suscripciones push
 
-### Instalar la app
-1. Abrir la web en Chrome/Edge desde un móvil o PC
-2. Aparecerá un aviso de "Instalar aplicación" o ir a menú > "Instalar app"
-3. La app se agrega al escritorio/pantalla de inicio
-4. Al abrirla, funciona sin barra de navegador (modo standalone)
+```bash
+php artisan migrate
+```
 
-## Configuración del Manifest
+Esto crea la tabla `push_subscriptions`.
 
-| Propiedad | Valor |
-|-----------|-------|
-| Nombre completo | SIIF2 - Sistema Integral de Información |
-| Nombre corto | SIIF2 |
-| Color tema | #4B5563 |
-| Color fondo | #ffffff |
-| Modo | standalone |
-| Orientación | portrait |
-| Inicio | / |
+### 4. Compilar
 
-## Estrategia de Cache (Workbox)
+```bash
+npm run build
+```
 
-- **Assets estáticos** (JS, CSS, íconos, fuentes): Pre-cache en build time
-- **Fuentes Bunny**: Cache-First, expira en 1 año, máximo 10 entradas
-- **Navegación HTML**: NO cacheada (Inertia maneja sus propias rutas)
-- **API calls**: NO cacheadas (siempre requieren datos frescos del servidor)
+---
 
-## Detección Offline
+## Cómo funciona el flujo de Push Notifications
 
-El componente `OfflineBanner` usa los eventos nativos del navegador:
-- `window.addEventListener('online', ...)`
-- `window.addEventListener('offline', ...)`
+### Suscripción (automática)
 
-Esto muestra/oculta un banner rojo cuando cambia el estado de conexión.
+```
+Usuario abre la app → 3 segundos después aparece prompt "Activar notificaciones"
+  → Si acepta → El navegador genera un subscription token
+    → Se envía a /push/subscribe → Se guarda en push_subscriptions
+  → Si rechaza → No se vuelve a pedir (el navegador lo recuerda)
+```
+
+### Envío de notificación
+
+```
+SIIF/GRT/SUP escribe mensaje en /notificacion → Click "Enviar"
+  → POST /notificacion/enviar
+    → Se guarda en t_notificaciones
+    → Se buscan todos los RFV del fabricante con push_subscriptions
+    → Se envía push a cada uno via Web Push API
+      → El teléfono muestra la notificación (incluso con app cerrada)
+      → Al tocar la notificación → Abre /notificacion en la app
+```
+
+### Desde API (app móvil)
+
+```
+SIIF/GRT/SUP envía POST /api/notificacion/crear (con token Sanctum)
+  → Se guarda en t_notificaciones
+  → Se dispara push a los vendedores suscritos del mismo fabricante
+```
+
+### Permisos de envío
+
+Solo pueden enviar notificaciones los usuarios con `idgrupo_persona`:
+- `SIIF` (Administrador)
+- `GRT` (Gerente)
+- `SUP` (Supervisor)
+
+---
+
+## Service Worker (`public/sw.js`)
+
+Maneja:
+- **push**: Recibe la notificación del servidor y la muestra
+- **notificationclick**: Al tocar la notificación, abre o enfoca la app en la URL de la notificación
+- Vibración: patrón `[200ms, 100ms, 200ms]`
+- `requireInteraction: true`: La notificación permanece hasta que el usuario la toque o cierre
+
+---
+
+## Detección Offline (`OfflineBanner.vue`)
+
+- Banner rojo fijo en la parte superior de la pantalla
+- Aparece automáticamente al perder conexión
+- Desaparece al reconectarse
+- Usa eventos nativos: `window.addEventListener('online/offline', ...)`
+
+---
+
+## Requisitos para producción
+
+### HTTPS (obligatorio)
+Las Push Notifications y el modo standalone **requieren HTTPS**. Opciones:
+- Certificado SSL en el servidor (Let's Encrypt, Cloudflare, etc.)
+- En desarrollo: `chrome://flags` > "Insecure origins treated as secure" > agregar tu IP
+
+### Claves VAPID
+Las claves VAPID deben estar configuradas en `.env`. Son únicas por instalación.
+**No compartir la clave privada.**
+
+---
 
 ## Próximos pasos sugeridos
 
 1. **Reemplazar íconos placeholder** con el logo real de SIIF2 (192x192 y 512x512 px)
-2. **Agregar screenshots** al manifest para mejorar el prompt de instalación
-3. **Configurar push notifications** si se necesitan notificaciones nativas
-4. **Probar en dispositivos reales** (Android Chrome, iOS Safari, Edge Desktop)
+2. **Configurar HTTPS** en el servidor de producción
+3. **Probar en dispositivos reales** (Android Chrome, iOS Safari 16.4+)
+4. **Agregar screenshots** al manifest.json para mejorar el prompt de instalación
