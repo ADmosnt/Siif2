@@ -140,6 +140,11 @@ Route::middleware(['auth',])->group(function () {
 
     // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
     Route::get('/notificacion', fn() => Inertia::render('Notificacion'))->name('notificacion');
+    Route::post('/notificacion/enviar', [\App\Http\Controllers\NotificacionPushController::class, 'enviar'])->name('notificacion.enviar');
+
+    // --- PUSH SUBSCRIPTIONS (PWA) ---
+    Route::post('/push/subscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
     Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
     Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
     Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
