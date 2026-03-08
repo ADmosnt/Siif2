@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('push_subscriptions', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->unsignedBigInteger('subscribable_id');
+            $table->string('subscribable_id');
             $table->string('subscribable_type');
             $table->string('endpoint', 500)->unique();
             $table->string('public_key')->nullable();
