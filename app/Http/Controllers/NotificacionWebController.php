@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TNotificacion;
 use App\Models\TPersona;
 use App\Models\TTipoNotificacion;
 use App\Services\CompanyContextService;
@@ -45,10 +46,46 @@ class NotificacionWebController extends Controller
         }
         $tipos = $tiposQuery->get(['id', 'titulo']);
 
+        // Bandeja de notificaciones según rol
+        $notificacionesQuery = TNotificacion::with('tipo')
+            ->where('idestatus', '!=', 0)
+            ->orderBy('fecha_registro', 'desc');
+
+        if ($user->idgrupo_persona === 'RFV') {
+            // RFV solo ve las que le enviaron a él o las de su fabricante (sin destino específico)
+            $notificacionesQuery->where(function ($q) use ($user) {
+                $q->where('idPersona', $user->idPersona)
+                  ->orWhere(function ($q2) use ($user) {
+                      $q2->where('idFabricante', $user->idFabricante)
+                         ->where('idPersona', '!=', $user->idPersona);
+                  });
+            });
+        } elseif (in_array($user->idgrupo_persona, ['GRT', 'SUP'])) {
+            // GRT/SUP ven las de su fabricante
+            $notificacionesQuery->where('idFabricante', $user->idFabricante);
+        } elseif ($user->idgrupo_persona === 'SIIF') {
+            // SIIF: si tiene empresa seleccionada, filtra; si no, ve todas
+            if ($activeFabricante) {
+                $notificacionesQuery->where('idFabricante', $activeFabricante);
+            }
+        }
+
+        $notificaciones = $notificacionesQuery->take(50)->get()->map(function ($n) {
+            return [
+                'idNotificacion' => $n->idNotificacion,
+                'descripcion' => $n->descripcion_notoficacion,
+                'tipo' => $n->tipo?->titulo,
+                'fecha' => $n->fecha_registro,
+                'idestatus' => $n->idestatus,
+                'idPersona' => $n->idPersona,
+            ];
+        });
+
         return Inertia::render('Notificacion', [
             'empresas' => $empresas,
             'representantes' => $representantes,
             'tipos' => $tipos,
+            'notificaciones' => $notificaciones,
             'activeCompanyId' => $activeFabricante,
             'usuario' => [
                 'idgrupo_persona' => $user->idgrupo_persona,

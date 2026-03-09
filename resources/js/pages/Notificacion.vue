@@ -24,6 +24,15 @@ interface TipoNotificacion {
     titulo: string
 }
 
+interface NotificacionItem {
+    idNotificacion: number
+    descripcion: string
+    tipo: string | null
+    fecha: string
+    idestatus: number
+    idPersona: string
+}
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Notificacion',
@@ -35,6 +44,7 @@ const props = defineProps<{
     empresas: EmpresaOption[]
     representantes: { data: RepresentanteOption[] }
     tipos: TipoNotificacion[]
+    notificaciones: NotificacionItem[]
     activeCompanyId: string | null
     usuario: { idgrupo_persona: string; nombre: string }
 }>()
@@ -142,6 +152,13 @@ function enviarNotificacion() {
             enviando.value = false
         },
     })
+}
+
+// Formato de fecha para la bandeja
+function formatFecha(fecha: string): string {
+    if (!fecha) return ''
+    const d = new Date(fecha)
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 // Mensajes flash
@@ -256,6 +273,55 @@ const flash = computed(() => (page.props as any).flash || {})
                     </div>
                 </section>
             </template>
+
+            <!-- Bandeja de notificaciones -->
+            <section class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                <h3 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Bandeja de Notificaciones</h3>
+
+                <div v-if="notificaciones.length === 0" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    No hay notificaciones registradas.
+                </div>
+
+                <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <div
+                        v-for="notif in notificaciones"
+                        :key="notif.idNotificacion"
+                        class="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:gap-4"
+                    >
+                        <!-- Indicador de estado -->
+                        <div class="flex shrink-0 items-center gap-2 sm:w-32">
+                            <span
+                                class="inline-block h-2 w-2 rounded-full"
+                                :class="notif.idestatus === 1 ? 'bg-green-500' : 'bg-gray-400'"
+                            />
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ formatFecha(notif.fecha) }}
+                            </span>
+                        </div>
+
+                        <!-- Contenido -->
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span
+                                    v-if="notif.tipo"
+                                    class="inline-block rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                >
+                                    {{ notif.tipo }}
+                                </span>
+                                <span
+                                    v-if="notif.idPersona"
+                                    class="text-xs text-gray-400 dark:text-gray-500"
+                                >
+                                    Para: {{ notif.idPersona }}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                                {{ notif.descripcion }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </AppLayout>
 </template>

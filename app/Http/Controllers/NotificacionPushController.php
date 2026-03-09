@@ -37,7 +37,7 @@ class NotificacionPushController extends Controller
         $validator = Validator::make($request->all(), [
             'descripcion' => 'required|string|max:500',
             'idtipo' => 'nullable|integer',
-            'idPersona_destino' => 'nullable|integer',
+            'idPersona_destino' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
