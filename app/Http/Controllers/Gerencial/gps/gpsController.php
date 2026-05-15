@@ -19,8 +19,10 @@ class gpsController extends Controller
 
         $datos = $request->validated();
 
-        $desde = Carbon::parse($datos['fechaDesde'])->startOfDay();
-        $hasta = Carbon::parse($datos['fechaHasta'])->endOfDay();
+        $fechaDesde = Carbon::parse($datos['fechaDesde']);
+        $fechaHasta = Carbon::parse($datos['fechaHasta']);
+        $desde = min($fechaDesde, $fechaHasta)->startOfDay();
+        $hasta = max($fechaDesde, $fechaHasta)->endOfDay();
 
         $actividades = TActividadesRepresentante::with([
             'cliente:idPersona,nombre_completo_razon_social,idespecialidad',

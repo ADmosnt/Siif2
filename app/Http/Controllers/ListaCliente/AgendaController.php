@@ -39,6 +39,7 @@ class AgendaController extends Controller
                 'meta' => [
                     'current_page' => $datosAgenda['clientes']->currentPage(),
                     'last_page' => $datosAgenda['clientes']->lastPage(),
+                    'per_page' => $datosAgenda['clientes']->perPage(),
                     'total' => $datosAgenda['clientes']->total(),
                 ]
             ],

@@ -180,6 +180,28 @@ export class PedidoService {
     }
   }
 
+  static async actualizarEstatus(ordenId: number, idestatus: number): Promise<any> {
+    const response = await fetch(`/pedidos/${ordenId}/estatus`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': decodeURIComponent(
+          document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='))?.split('=')[1] || ''
+        ),
+      },
+      body: JSON.stringify({ idestatus }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error al actualizar estatus: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  }
+
   /**
    * OPCIONAL: agregar un método para obtener RFVs específicos para pedidos
    * aunque estamos usando el mismo endpoint que ReporteAgenda

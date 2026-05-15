@@ -16,7 +16,7 @@ class GetPedidosRequest extends FormRequest
         return [
             'estatus_id' => 'nullable|integer|exists:t_estatus_ordenes,idestatus',
             'fecha_inicio' => 'nullable|date',
-            'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio',
+            'fecha_fin' => 'nullable|date',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:100',
         ];

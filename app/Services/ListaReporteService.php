@@ -48,8 +48,11 @@ class ListaReporteService
         }
         
         // 2. Filtro de fechas y carga de relaciones necesarias
+        $inicio = min($startDate, $endDate);
+        $fin    = max($startDate, $endDate);
+
         return $query->with(['representante:idPersona,nombre_completo_razon_social'])
-            ->whereBetween('fecha_actividad', [$startDate, $endDate])
+            ->whereBetween('fecha_actividad', [$inicio, $fin])
             ->orderBy('fecha_actividad', 'desc')
             ->paginate($perpage, ['*'], 'page', $page)
             ->withQueryString();

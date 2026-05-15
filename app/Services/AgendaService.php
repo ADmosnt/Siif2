@@ -434,6 +434,7 @@ class AgendaService
     private function obtenerClientesPaginadosEmpresa(Request $request, string $idFabricante, ?string $idCliente = null): LengthAwarePaginator
     {
         $size = $request->input('size', 15);
+        $page = $request->input('page', 1);
         $rfvs = TPersona::withoutGlobalScopes()
             ->where('idgrupo_persona', 'RFV')
             ->where('idFabricante', $idFabricante)
@@ -451,7 +452,8 @@ class AgendaService
         }
 
         return $query->orderBy('nombre_completo_razon_social')
-            ->paginate($size)
+            ->paginate($size, ['*'], 'page', $page)
+            ->withQueryString()
             ->through(function ($cliente) use ($rfvs) {
                 // Buscamos el RFV para el formateo
                 $relacion = RClienteRfv::where('id_cliente', $cliente->idPersona)

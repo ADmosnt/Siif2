@@ -54,7 +54,11 @@ class PedidoService
         
         // 2. Filtros de Negocio
         if ($estatusId) $query->where('idestatus', $estatusId);
-        if ($fechaInicio && $fechaFin) $query->whereBetween('fechaOrden', [$fechaInicio, $fechaFin]);
+        if ($fechaInicio && $fechaFin) {
+            $inicio = min($fechaInicio, $fechaFin);
+            $fin    = max($fechaInicio, $fechaFin);
+            $query->whereBetween('fechaOrden', [$inicio, $fin]);
+        }
         
         // 3. Carga de relaciones (Estandarizado)
         $query->with([
@@ -107,6 +111,25 @@ class PedidoService
         }
         
         return $query->get(['idestatus', 'descripcion'])->toArray();
+    }
+
+    public function actualizarEstatusOrden(int $ordenId, int $nuevoEstatus): ?TOrdene
+    {
+        $user = Auth::user();
+        $activeFabricante = $this->contextService->getActiveId();
+
+        $orden = TOrdene::withoutGlobalScope(OperadorFabricante::class)->find($ordenId);
+        if (!$orden) return null;
+
+        $rfv = $orden->rfv()->withoutGlobalScope(OperadorFabricante::class)->first();
+        if ($user->idgrupo_persona !== 'SIIF' && $rfv?->idFabricante !== $activeFabricante) {
+            return null;
+        }
+
+        $orden->idestatus = $nuevoEstatus;
+        $orden->save();
+
+        return $orden->fresh(['estatus']);
     }
 
     /**

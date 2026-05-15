@@ -11,6 +11,10 @@ import SimpleDatePicker from '@/components/simpleDatePicker.vue'
 import { type DateValue } from '@internationalized/date'
 import axios from 'axios'
 
+const props = defineProps<{
+  user_role: string
+}>()
+
 const breadcrumbs: BreadcrumbItem[] = [
   { label: 'SIIF', href: '/dashboard' },
   { label: 'Pedidos' },
@@ -24,13 +28,13 @@ interface SelectOption {
 
 type OrdenConPanelItem = Orden & PanelItem
 
-// Variables de fecha
-const fechaInicio = ref<DateValue>();
-const fechaFin = ref<DateValue>();
+const fechaInicio = ref<DateValue>()
+const fechaFin = ref<DateValue>()
 
 const ordenes = ref<OrdenConPanelItem[]>([])
 const selectedOrden = ref<OrdenConPanelItem | null>(null)
 const loading = ref(true)
+const updatingStatus = ref(false)
 
 const estatusOptions = ref<SelectOption[]>([])
 const selectedEstatus = ref<SelectOption | null>(null)
@@ -42,15 +46,19 @@ const selectedRfv = ref<SelectOption | null>(null)
 const isLoadingRfvs = ref(false)
 const rfvsLoaded = ref(false)
 
+const puedeModificarEstatus = computed(() =>
+  ['SIIF', 'GRT', 'SUP'].includes(props.user_role)
+)
+
 const leftPanelConfig = {
-  title: 'Órdenes',
-  emptyMessage: 'No hay órdenes con los filtros seleccionados.'
+  title: 'Ordenes',
+  emptyMessage: 'No hay ordenes con los filtros seleccionados.'
 }
 
 const rightPanelConfig = {
-  title: computed(() => 
-    selectedOrden.value 
-      ? `Orden #${selectedOrden.value.nOrden}` 
+  title: computed(() =>
+    selectedOrden.value
+      ? `Orden #${selectedOrden.value.nOrden}`
       : 'Seleccione una orden'
   ),
   detailTemplate: 'orden-detalle' as const,
@@ -59,20 +67,20 @@ const rightPanelConfig = {
 
 async function fetchData() {
   if (!estatusLoaded.value || !rfvsLoaded.value) return
-  
+
   loading.value = true
   try {
     const params: any = {
-        fecha_inicio: fechaInicio.value,
-        fecha_fin: fechaFin.value
+      fecha_inicio: fechaInicio.value,
+      fecha_fin: fechaFin.value
     }
-    
+
     if (selectedEstatus.value) params.estatus_id = parseInt(selectedEstatus.value.value, 10)
     if (selectedRfv.value) params.rfv_id = selectedRfv.value.value
-    
+
     const response = await PedidoService.getOrdenesFiltradas(params)
     const ordenesConDetalle: OrdenConPanelItem[] = []
-    
+
     for (const orden of response.data) {
       try {
         const detalleCompleto = await PedidoService.getOrdenDetalle(orden.nOrden)
@@ -82,7 +90,7 @@ async function fetchData() {
           nombre: `Orden #${detalleCompleto.nOrden}`,
           subtext: `${detalleCompleto.cliente} - ${detalleCompleto.fecha}`
         })
-      } catch (error) {
+      } catch {
         ordenesConDetalle.push({
           ...orden,
           id: orden.nOrden.toString(),
@@ -91,12 +99,10 @@ async function fetchData() {
         })
       }
     }
-    
+
     ordenes.value = ordenesConDetalle
     selectedOrden.value = ordenes.value.length > 0 ? { ...ordenes.value[0] } : null
-    
-  } catch (error) {
-    console.error('Error al cargar órdenes:', error)
+  } catch {
     ordenes.value = []
     selectedOrden.value = null
   } finally {
@@ -113,7 +119,7 @@ async function cargarEstatus() {
       label: e.descripcion
     }))
     estatusLoaded.value = true
-  } catch (error) {
+  } catch {
     estatusLoaded.value = true
   } finally {
     isLoadingEstatus.value = false
@@ -123,7 +129,7 @@ async function cargarEstatus() {
 async function cargarRfvs() {
   isLoadingRfvs.value = true
   try {
-    const response = await axios.get('/representantes-data') 
+    const response = await axios.get('/representantes-data')
     const data = response.data.data.map((r: any) => ({
       value: r.id.toString(),
       label: r.nombre
@@ -131,14 +137,35 @@ async function cargarRfvs() {
     rfvOptions.value = data
     if (data.length === 1) selectedRfv.value = data[0]
     rfvsLoaded.value = true
-  } catch (error) {
+  } catch {
     rfvsLoaded.value = true
   } finally {
     isLoadingRfvs.value = false
   }
 }
 
-// 4. Watcher actualizado para incluir las nuevas variables de fecha
+async function cambiarEstatus(ordenId: number, nuevoEstatus: number, descripcion: string) {
+  if (!puedeModificarEstatus.value || updatingStatus.value) return
+
+  updatingStatus.value = true
+  try {
+    await PedidoService.actualizarEstatus(ordenId, nuevoEstatus)
+
+    if (selectedOrden.value && selectedOrden.value.nOrden === ordenId) {
+      selectedOrden.value = { ...selectedOrden.value, estatus: descripcion }
+    }
+
+    const idx = ordenes.value.findIndex(o => o.nOrden === ordenId)
+    if (idx !== -1) {
+      ordenes.value[idx] = { ...ordenes.value[idx], estatus: descripcion }
+    }
+  } catch (err) {
+    console.error('Error al cambiar estatus:', err)
+  } finally {
+    updatingStatus.value = false
+  }
+}
+
 watch([selectedEstatus, fechaInicio, fechaFin, selectedRfv], () => {
   fetchData()
 })
@@ -161,13 +188,11 @@ const ordenesFiltradas = computed(() => selectedOrden.value ? [selectedOrden.val
   <Head title="Seguimiento de Pedidos" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="p-6">
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Seguimiento de Pedidos
-        </h2>
+      <!-- Filtros -->
+      <div class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Filtros</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
-          
           <div class="flex flex-col">
             <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estatus</label>
             <GenericCombobox
@@ -190,34 +215,58 @@ const ordenesFiltradas = computed(() => selectedOrden.value ? [selectedOrden.val
             />
           </div>
 
-          <div class="lg:col-span-2 flex flex-col md:flex-row gap-4">
-            <div class="flex-1 min-w-0">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Desde</label>
-                <SimpleDatePicker v-model="fechaInicio"/>
-            </div>
-            <div class="flex-1 min-w-0">
-                <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Hasta</label>
-                <SimpleDatePicker v-model="fechaFin"/>
-            </div>
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+            <SimpleDatePicker v-model="fechaInicio"/>
+          </div>
+          <div class="flex flex-col">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+            <SimpleDatePicker v-model="fechaFin"/>
           </div>
         </div>
       </div>
 
       <div v-if="loading" class="text-center py-8 text-gray-600 dark:text-gray-400">
-        Cargando órdenes...
+        Cargando ordenes...
       </div>
 
       <div v-else-if="ordenes.length === 0" class="text-center py-8 text-gray-600 dark:text-gray-400">
-        No hay órdenes con los filtros seleccionados.
+        No hay ordenes con los filtros seleccionados.
       </div>
 
-      <PanelDual
-        v-else
-        :left-panel="{ ...leftPanelConfig, items: ordenes }"
-        :right-panel="{ ...rightPanelConfig, items: ordenesFiltradas }"
-        :selected-item="selectedOrden"
-        @item-selected="handleOrdenSelected"
-      />
+      <template v-else>
+        <PanelDual
+          :left-panel="{ ...leftPanelConfig, items: ordenes }"
+          :right-panel="{ ...rightPanelConfig, items: ordenesFiltradas }"
+          :selected-item="selectedOrden"
+          @item-selected="handleOrdenSelected"
+        />
+
+        <!-- Acciones de estatus (solo SIIF/GRT/SUP) -->
+        <div
+          v-if="puedeModificarEstatus && selectedOrden"
+          class="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+        >
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Cambiar Estatus - Orden #{{ selectedOrden.nOrden }}
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="opcion in estatusOptions"
+              :key="opcion.value"
+              @click="cambiarEstatus(selectedOrden!.nOrden, parseInt(opcion.value), opcion.label)"
+              :disabled="updatingStatus || selectedOrden?.estatus === opcion.label"
+              class="px-4 py-2 text-sm font-medium rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="selectedOrden?.estatus === opcion.label
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600'"
+            >
+              {{ opcion.label }}
+              <span v-if="selectedOrden?.estatus === opcion.label" class="ml-1">(actual)</span>
+            </button>
+          </div>
+        </div>
+      </template>
     </div>
   </AppLayout>
 </template>

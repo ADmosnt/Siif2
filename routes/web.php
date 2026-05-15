@@ -116,6 +116,7 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/pedidos', [PedidoController::class, 'getOrdenesFiltradas'])->name('pedidos.filtradas');
     Route::get('/pedidos/{id}', [PedidoController::class, 'getOrdenDetalle'])->name('pedidos.detalle');
     Route::get('/estatus-ordenes', [PedidoController::class, 'getEstatus'])->name('pedidos.estatus');
+    Route::patch('/pedidos/{id}/estatus', [PedidoController::class, 'actualizarEstatus'])->name('pedidos.actualizar-estatus');
 
     // --- TOMA DE PEDIDOS (TDP) ---
     Route::get('/tdp', [ReporteController::class, 'index'])->name('toma-de-pedidos.index');
@@ -137,6 +138,8 @@ Route::middleware(['auth',])->group(function () {
     Route::post('/tmp-planificaciones', [TmpPlanificadorController::class, 'store'])->name('tmp_planificaciones.store');
     Route::put('/tmp-planificaciones/{id}', [TmpPlanificadorController::class, 'update'])->name('tmp_planificaciones.update');
     Route::delete('/tmp-planificaciones/{id}', [TmpPlanificadorController::class, 'destroy'])->name('tmp_planificaciones.destroy');
+    Route::get('/tmp-planificaciones/plantilla-descarga', [TmpPlanificadorController::class, 'descargarPlantilla'])->name('tmp_planificaciones.plantilla');
+    Route::post('/tmp-planificaciones/carga-masiva', [TmpPlanificadorController::class, 'cargaMasiva'])->name('tmp_planificaciones.carga_masiva');
 
     // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
     Route::get('/notificacion', [\App\Http\Controllers\NotificacionWebController::class, 'index'])->name('notificacion');

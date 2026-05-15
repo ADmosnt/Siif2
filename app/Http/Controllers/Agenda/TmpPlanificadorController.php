@@ -12,11 +12,14 @@ use App\Services\TmpPlanificadorService;
 use App\Services\RepresentanteClienteService;
 use App\Services\ReporteDataService;
 use App\Services\AccessControlService;
+use App\Imports\VisitasImports\VisitaMasivaImport;
+use App\Exports\VisitasExports\PlantillaVisitasExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TmpPlanificadorController extends Controller
 {
@@ -170,6 +173,46 @@ class TmpPlanificadorController extends Controller
             ]);
             
             return response()->json(['error' => 'Error interno del servidor'], 500);
+        }
+    }
+
+    public function descargarPlantilla()
+    {
+        return Excel::download(new PlantillaVisitasExport(), 'plantilla_visitas.xlsx');
+    }
+
+    public function cargaMasiva(Request $request): JsonResponse
+    {
+        $request->validate([
+            'archivo' => 'required|file|mimes:xlsx,xls,csv|max:5120',
+        ]);
+
+        try {
+            $import = new VisitaMasivaImport();
+            Excel::import($import, $request->file('archivo'));
+
+            $importados = $import->getImportados();
+            $errores = $import->getErrors();
+            $failures = $import->getFailures();
+
+            $mensaje = "{$importados} visita(s) creada(s) correctamente.";
+            if (count($errores) > 0 || count($failures) > 0) {
+                $mensaje .= ' Algunas filas tuvieron errores.';
+            }
+
+            return response()->json([
+                'message' => $mensaje,
+                'importados' => $importados,
+                'errores' => $errores,
+                'failures' => collect($failures)->map(fn($f) => [
+                    'row' => $f->row(),
+                    'attribute' => $f->attribute(),
+                    'errors' => $f->errors(),
+                ])->toArray(),
+            ], $importados > 0 ? 200 : 422);
+        } catch (\Exception $e) {
+            Log::error('Error en carga masiva de visitas:', ['message' => $e->getMessage()]);
+            return response()->json(['message' => 'Error al procesar el archivo: ' . $e->getMessage()], 500);
         }
     }
 

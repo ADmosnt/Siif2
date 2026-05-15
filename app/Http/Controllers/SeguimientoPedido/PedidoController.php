@@ -75,6 +75,32 @@ class PedidoController extends Controller
         return response()->json(['data' => $ordenDetalle]);
     }
 
+    public function actualizarEstatus(Request $request, string $id): JsonResponse
+    {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $request->validate([
+            'idestatus' => 'required|integer',
+        ]);
+
+        $orden = $this->pedidoService->actualizarEstatusOrden((int)$id, $request->idestatus);
+
+        if (!$orden) {
+            return response()->json(['error' => 'Orden no encontrada o sin acceso'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Estatus actualizado correctamente',
+            'data' => [
+                'idorden' => $orden->idorden,
+                'idestatus' => $orden->idestatus,
+                'estatus' => $orden->estatus->descripcion ?? 'Sin estatus',
+            ]
+        ]);
+    }
+
     public function getEstatus(): JsonResponse
     {
         return response()->json($this->pedidoService->getEstatusDisponibles());

@@ -29,7 +29,6 @@ class GetListaReporteRequet extends FormRequest
                 'required',
                 'date',
                 'date_format:Y-m-d',
-                'after_or_equal:fechaInicio',
             ],
         
             'per_page' => [

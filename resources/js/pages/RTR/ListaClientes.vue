@@ -68,9 +68,9 @@ const rowsData = computed(() => {
 
 const summaries = computed(() => {
   const stats = props.value.estadisticas || {}
-  
-  // SIIF sin RFV: ocultar estadísticas
-  if (user.value.idgrupo_persona === 'SIIF' && !selectedRfv.value) {
+
+  const activeCompany = props.value.selectedFabricante
+  if (user.value.idgrupo_persona === 'SIIF' && !selectedRfv.value && !activeCompany) {
     return []
   }
   

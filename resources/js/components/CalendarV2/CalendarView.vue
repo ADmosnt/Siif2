@@ -67,7 +67,47 @@ const isLoadingRfvsFilter = ref(false)
 const isLoadingClientesFilter = ref(false)
 const selectedCliente = ref<SelectOption | null>(null)
 const selectedRfv = ref<SelectOption | null>(null)
-const rfvsLoaded = ref(false) // ✅ Nuevo flag para controlar la carga inicial
+const rfvsLoaded = ref(false)
+
+// =============================================================================
+// CARGA MASIVA
+// =============================================================================
+
+const isUploading = ref(false)
+const rutaPlantilla = '/tmp-planificaciones/plantilla-descarga'
+
+async function handleCargaMasiva(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  const file = input.files[0]
+  isUploading.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('archivo', file)
+
+    const response = await axios.post('/tmp-planificaciones/carga-masiva', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+
+    const data = response.data
+    let mensaje = data.message || 'Carga completada.'
+    if (data.errores?.length > 0) {
+      mensaje += '\n\nErrores:\n' + data.errores.slice(0, 5).join('\n')
+      if (data.errores.length > 5) mensaje += `\n...y ${data.errores.length - 5} errores mas.`
+    }
+    alert(mensaje)
+
+    await visitasStore.cargarVisitasDelMes(currentDate.value)
+  } catch (err: any) {
+    const msg = err.response?.data?.message || 'Error al procesar el archivo.'
+    alert(msg)
+  } finally {
+    isUploading.value = false
+    input.value = ''
+  }
+}
 
 // =============================================================================
 // REFERENCIAS DE MODALES
@@ -462,14 +502,29 @@ defineExpose({
               />
             </div>
             
-            <Button 
-              v-if="props.showEventButton" 
-              @click="toggleNewEventForm"
-              :disabled="visitasStore.isLoading"
-              class="w-full sm:w-auto"
-            >
-              + Crear Visita
-            </Button>
+            <div v-if="props.showEventButton" class="flex flex-wrap gap-2">
+              <a
+                :href="rutaPlantilla"
+                class="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Descargar Formato
+              </a>
+              <label
+                class="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                :class="{ 'opacity-50 pointer-events-none': isUploading }"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                {{ isUploading ? 'Cargando...' : 'Carga Masiva' }}
+                <input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  class="hidden"
+                  @change="handleCargaMasiva"
+                  :disabled="isUploading"
+                />
+              </label>
+            </div>
           </div>
         </slot>
       </div>
