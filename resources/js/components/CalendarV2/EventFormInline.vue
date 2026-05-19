@@ -384,12 +384,12 @@ function save() {
   if (!validateForm()) return
   
   const title = buildEventTitle()
-  const startDate = new Date(form.startLocal)
+  const [fechaPart, horaPart] = form.startLocal.split('T')
 
   if (props.mode === 'edit' && props.eventId) {
     const current = visitasStore.visitas.find(v => v.id === props.eventId)
     if (!current) return
-    
+
     const updated: Visita = {
       ...current,
       id: props.eventId,
@@ -404,15 +404,14 @@ function save() {
         rfv_id: form.rfv_id,
         nombre_cliente: form.selectedCliente?.label || current.metadata.nombre_cliente,
         nombre_rfv: form.selectedRfv?.label || current.metadata.nombre_rfv,
-        fecha_original: startDate.toISOString().split('T')[0],
-        hora_original: startDate.toTimeString().substring(0, 5),
+        fecha_original: fechaPart,
+        hora_original: horaPart,
         puedeEditar: puedeEditar.value,
         puedeEliminar: puedeEliminar.value,
         puedeProcesar: puedeProcesar.value
       }
     }
     emit('saved', updated)
-    alertStore.showSuccess('Visita actualizada correctamente')
   } else {
     const newVisita: Visita = {
       id: `tmp_${Date.now()}`,
@@ -426,8 +425,8 @@ function save() {
         rfv_id: form.rfv_id,
         nombre_cliente: form.selectedCliente?.label || '',
         nombre_rfv: form.selectedRfv?.label || '',
-        fecha_original: startDate.toISOString().split('T')[0],
-        hora_original: startDate.toTimeString().substring(0, 5),
+        fecha_original: fechaPart,
+        hora_original: horaPart,
         puedeEditar: true,
         puedeEliminar: true,
         puedeProcesar: true,
@@ -435,7 +434,6 @@ function save() {
       }
     }
     emit('saved', newVisita)
-    alertStore.showSuccess('Visita creada correctamente')
   }
 }
 

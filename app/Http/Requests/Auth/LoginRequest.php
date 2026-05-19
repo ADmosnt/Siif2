@@ -55,7 +55,13 @@ class LoginRequest extends FormRequest
             $user = Auth::user();
 
             if ($user) {
-                // Acceder al idFabricante del usuario
+                if ($user->idestatus == 0) {
+                    Auth::logout();
+                    throw ValidationException::withMessages([
+                        'name' => 'Su cuenta ha sido desactivada. Contacte al administrador.',
+                    ]);
+                }
+
                 $idFabricante = $user->idFabricante;
 
                 //Almacenar el idFabricante en la sesión

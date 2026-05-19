@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useVisitasStore, type Visita } from '@/stores/calendarStore'
+import { useAlertStore } from '@/stores/alertStore'
 import EventFormInline from './EventFormInline.vue'
 
 // =============================================================================
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 // =============================================================================
 
 const visitasStore = useVisitasStore()
+const alertStore = useAlertStore()
 
 const isOpen = ref(false)
 const localMode = ref<'day'|'global'>(props.mode ?? 'day')
@@ -437,15 +439,17 @@ defineExpose({
                   mode="edit"
                   :event-id="editingId"
                   @cancel="backToList"
-                  @saved="(ev) => { 
+                  @saved="(ev) => {
                     visitasStore.actualizarVisita(ev.id, {
                       idCliente: ev.metadata.cliente_id,
                       Fecha: ev.metadata.fecha_original,
                       Hora: ev.metadata.hora_original,
                       idRFV: ev.metadata.rfv_id
                     }).then(() => {
-                      // ✅ SOLUCIÓN: Recargar las visitas del mes actual
+                      alertStore.showSuccess('Visita actualizada correctamente')
                       return visitasStore.cargarVisitasDelMes(visitasStore.mesActual)
+                    }).catch((err: any) => {
+                      alertStore.showError(err.response?.data?.message || 'Error al actualizar la visita')
                     })
                   }"
                   @deleted="(id) => { 
@@ -465,14 +469,17 @@ defineExpose({
                   mode="create"
                   :default-date="selectedDate ?? undefined"
                   @cancel="creating=false"
-                  @saved="(ev: Visita) => { 
+                  @saved="(ev: Visita) => {
                     visitasStore.crearVisita({
                       idCliente: ev.metadata.cliente_id,
                       Fecha: ev.metadata.fecha_original,
                       Hora: ev.metadata.hora_original,
                       idRFV: ev.metadata.rfv_id
                     }).then(() => {
+                      alertStore.showSuccess('Visita creada correctamente')
                       creating = false
+                    }).catch((err: any) => {
+                      alertStore.showError(err.response?.data?.message || 'Error al crear la visita')
                     })
                   }"
                 />

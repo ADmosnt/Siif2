@@ -81,7 +81,7 @@ const debouncedDynamicSearch = debounce((term: string) => {
   if (props.dynamicSearch && term.length >= 2) {
     emit('dynamic-search', term);
   }
-}, 500);
+}, 1000);
 
 //Función para enfocar el input
 const focusInput = () => {
@@ -129,10 +129,9 @@ watch(searchTerm, (newTerm, oldTerm) => {
       lastSearchTerm.value = '';
     }
   }
-  // Restablecer isTyping después de un tiempo
   setTimeout(() => {
     isTyping.value = false;
-  }, 100);
+  }, 800);
 });
 
 // Control de apertura/cierre del combobox
@@ -214,32 +213,12 @@ const handleBlur = () => {
   emit('blur');
 };
 
-//Función para manejar el cambio en las opciones
 const handleOptionsChange = () => {
-  // Si el usuario estaba escribiendo y tenemos opciones, no forzar la selección
-  if (isTyping.value && searchTerm.value && !selectedValue.value) {
-    // No hacer nada - dejar que el usuario continúe escribiendo
-    return;
-  }
-  
-  // Si tenemos un término de búsqueda y no hay selección, buscar coincidencia exacta
-  if (searchTerm.value && !selectedValue.value && !props.dynamicSearch) {
-    const exactMatch = props.options.find(option => 
-      option.label.toLowerCase() === searchTerm.value.toLowerCase()
-    );
-    
-    if (exactMatch) {
-      selectedValue.value = exactMatch;
-      searchTerm.value = exactMatch.label;
-    }
-  }
 };
 
-// Watch para opciones que llegan después de abrir
 watch(() => props.options, (newOptions) => {
   if (isOpen.value && newOptions.length > 0) {
     loading.value = false;
-    handleOptionsChange();
   }
 }, { deep: true });
 

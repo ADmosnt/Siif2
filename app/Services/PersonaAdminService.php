@@ -92,6 +92,27 @@ class PersonaAdminService
         return TPersona::where('idPersona', $id)->update(['idestatus' => 0]);
     }
 
+    public function toggleFabricanteStatus(string $idFabricante): array
+    {
+        $personas = TPersona::where('idFabricante', $idFabricante)->get();
+
+        if ($personas->isEmpty()) {
+            throw new \Exception('No se encontraron personas para este fabricante.');
+        }
+
+        $currentStatus = $personas->first()->idestatus;
+        $newStatus = $currentStatus == 1 ? 0 : 1;
+
+        $affected = TPersona::where('idFabricante', $idFabricante)
+            ->update(['idestatus' => $newStatus]);
+
+        return [
+            'idFabricante' => $idFabricante,
+            'new_status' => $newStatus,
+            'affected' => $affected,
+        ];
+    }
+
     // --- MÉTODOS AUXILIARES ---
 
     private function limpiarCombobox($campo)

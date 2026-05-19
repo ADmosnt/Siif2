@@ -212,4 +212,23 @@ class PersonaAdminController extends Controller
             return back()->with('error', 'Ocurrió un error al eliminar el registro');
         }
     }
+
+    public function toggleFabricanteStatus(Request $request, string $idFabricante)
+    {
+        if (!$this->accessControl->hasAnyRole(['SIIF'])) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        try {
+            $result = $this->personaService->toggleFabricanteStatus($idFabricante);
+            $statusText = $result['new_status'] == 1 ? 'activada' : 'desactivada';
+            return response()->json([
+                'message' => "Empresa {$statusText} correctamente. {$result['affected']} usuario(s) afectado(s).",
+                'data' => $result,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('toggleFabricanteStatus error', ['exception' => $e->getMessage()]);
+            return response()->json(['error' => 'Error al cambiar el estatus'], 500);
+        }
+    }
 }

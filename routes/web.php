@@ -88,6 +88,9 @@ Route::middleware(['auth',])->group(function () {
             Route::delete('/{id}', [ProductoAdminController::class, 'destroy'])->defaults('tipo', $tipo);
         });
     }
+    // --- EMPRESA / FABRICANTE ---
+    Route::patch('/empresas/{idFabricante}/toggle-status', [PersonaAdminController::class, 'toggleFabricanteStatus'])->name('empresas.toggle-status');
+
     // --- REPORTES (RTR) ---
     Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
     Route::get('/nuevo-reporte', [ReporteController::class, 'index'])->name('nuevo-reporte.index');
