@@ -30,8 +30,9 @@ class PersonaResource extends JsonResource
             'descuento_especial'=> $this->when($this->esMayorista(), $this->descuento), 
             'created_at'        => $this->fecha_nacimiento_registro,
             'documento' => $this->documento_identidad ?? 'Sin documento',
+            'estatus' => $this->idestatus == 1 ? 'Activo' : 'Inactivo',
+            'idFabricante' => $this->idFabricante,
 
-            //esta información es la que se muestra en los modales (ya sea de crear o editar) del Modulo de Adminitrar Personas
             'metadata' => [
                 'nombre'            => $this->nombre_persona,
                 'apellido'          => $this->apellido_persona,

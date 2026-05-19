@@ -8,6 +8,7 @@ import GlobalTable from '@/components/GlobalTable.vue'
 import Input from '@/components/ui/input/Input.vue'
 import ModalGen from '@/components/Administrar/ModalGen.vue'
 import { useDebounceFn } from '@vueuse/core'
+import axios from 'axios'
 
 const props = defineProps<{
   tipo: string;
@@ -126,20 +127,48 @@ const handleSearch = useDebounceFn((val: string) => {
 
 watch(search, handleSearch)
 
-// --- ACCIONES TABLA ---
-const tableActions = [
-  { key: 'edit', handler: openEditModal },
-  { 
-    key: 'delete', 
-    handler: (row: any) => {
-      if (confirm(`¿Está seguro de eliminar a ${row.nombre}?`)) {
-        router.delete(`/${config.value.routePrefix}/${row.id}`, {
-          preserveScroll: true
-        })
-      }
-    } 
+// --- TOGGLE ESTATUS EMPRESA ---
+const togglingStatus = ref(false)
+
+async function toggleEmpresaStatus(row: any) {
+  const idFabricante = row.idFabricante || row.id
+  const currentStatus = row.estatus === 'Activo' ? 'activa' : 'inactiva'
+  const newAction = row.estatus === 'Activo' ? 'DESACTIVAR' : 'ACTIVAR'
+
+  if (!confirm(`¿Está seguro de ${newAction} la empresa "${row.nombre_completo}"?\n\nEsto afectará a TODOS los usuarios de esta empresa.`)) {
+    return
   }
-]
+
+  togglingStatus.value = true
+  try {
+    const response = await axios.patch(`/empresas/${idFabricante}/toggle-status`)
+    alert(response.data.message)
+    router.reload({ preserveScroll: true })
+  } catch (err: any) {
+    alert(err.response?.data?.error || 'Error al cambiar el estatus')
+  } finally {
+    togglingStatus.value = false
+  }
+}
+
+// --- ACCIONES TABLA ---
+const tableActions = computed(() => {
+  const actions: any[] = [
+    { key: 'edit', handler: openEditModal },
+    {
+      key: 'delete',
+      handler: (row: any) => {
+        if (confirm(`¿Está seguro de eliminar a ${row.nombre_completo}?`)) {
+          router.delete(`/${config.value.routePrefix}/${row.id}`, {
+            preserveScroll: true
+          })
+        }
+      }
+    }
+  ]
+
+  return actions
+})
 </script>
 
 <template>
@@ -158,22 +187,35 @@ const tableActions = [
 
       <GlobalTable
         :columns="config.columns"
-        :rows="items.data" 
+        :rows="items.data"
         :actions="tableActions"
-        
+
         :links="items.meta ? items.meta.links : items.links"
         :total-records="items.total"
         :page-size="String(items.per_page)"
         :current-page="items.current_page"
-        
+
         :show-add-button="true"
-        :add-button-label="`Agregar ${config.title.split(' ').pop()}`" 
+        :add-button-label="`Agregar ${config.title.split(' ').pop()}`"
         add-button-label-short="+"
-        
+
         :auto-add-actions-column="true"
-        
+
         @add="openCreateModal"
-      />
+      >
+        <template #cell-estatus="{ row }">
+          <button
+            @click="toggleEmpresaStatus(row)"
+            :disabled="togglingStatus"
+            class="px-3 py-1 rounded-full text-xs font-semibold transition-colors"
+            :class="row.estatus === 'Activo'
+              ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300'
+              : 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-300'"
+          >
+            {{ row.estatus }}
+          </button>
+        </template>
+      </GlobalTable>
 
       <ModalGen
         v-model="showModal"

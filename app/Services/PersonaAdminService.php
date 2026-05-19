@@ -22,8 +22,11 @@ class PersonaAdminService
         $activeId = $this->contextService->getActiveId();
 
         $query = TPersona::query()
-            ->where('idgrupo_persona', $idGrupo)
-            ->where('idestatus', 1);
+            ->where('idgrupo_persona', $idGrupo);
+
+        if ($slugTipo !== 'empresas') {
+            $query->where('idestatus', 1);
+        }
 
         // Seguridad: Si no es SIIF, siempre filtrar por su idFabricante
         if ($activeId) {
@@ -173,6 +176,7 @@ class PersonaAdminService
             'supervisores'   => 'SUP',
             'gerentes'       => 'GRT',
             'fabricantes'    => 'FABR',
+            'empresas'       => 'FABR',
             default          => throw new \Exception("Tipo de entidad  '$slug' no soportado")
         };
     }

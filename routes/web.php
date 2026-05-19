@@ -64,6 +64,7 @@ Route::middleware(['auth',])->group(function () {
         'mayoristas'     => 'mayoristas',
         'supervisores'   => 'supervisores',
         'gerentes'       => 'gerentes',
+        'empresas'       => 'empresas',
     ];
 
     foreach ($rutasGenericasPersonas as $url => $tipo) {
