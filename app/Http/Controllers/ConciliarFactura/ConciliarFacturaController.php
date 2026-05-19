@@ -19,7 +19,6 @@ class ConciliarFacturaController extends Controller
      */
     public function store(Request $request)
     {
-
         // 1. Validación de datos PRIMARIOS (nunca derivados)
         $validator = Validator::make($request->all(), [
             'norden' => 'required|numeric|exists:t_ordenes,idorden',
@@ -104,7 +103,7 @@ class ConciliarFacturaController extends Controller
             if (!$pivotData) {
                 return redirect()->back()->withInput()->with('error', "Producto {$producto['id']} no encontrado en la orden");
             }
-            $cantidadOriginal = $pivotData->cantidad_solicitada ?? 0;
+            $cantidadOriginal = $pivotData->pivot->cantidad_solicitada ?? 0;
             $faltantes = $cantidadOriginal - $producto['despachadas'];
             $subtotal += $producto['despachadas'] * $precioReal;
             $totalConciliadas += $producto['despachadas'];
@@ -154,15 +153,15 @@ class ConciliarFacturaController extends Controller
 
             // 7. Actualizar productos en la orden
             foreach ($productosActualizados as $producto) {
-                $orden->Productos()->withoutGlobalScopes()->updateExistingPivot(
-                    $producto['id'],
-                    [
+                DB::table('t_item_ordenes')
+                    ->where('idorden',    $orden->idorden)
+                    ->where('idproducto', $producto['id'])
+                    ->update([
                         'cantidad_conciliada' => $producto['conciliada'],
-                        'cantidad_faltante' => $producto['faltantes'],
-                        'item_price' => $producto['precio'],
-                        'item_total' => $producto['conciliada'] * $producto['precio'],
-                    ]
-                );
+                        'cantidad_faltante'   => $producto['faltantes'],
+                        'item_price'          => $producto['precio'],
+                        'item_total'          => $producto['conciliada'] * $producto['precio'],
+                    ]);
             }
 
             // 8. Actualizar la orden

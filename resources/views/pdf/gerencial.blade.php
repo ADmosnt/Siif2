@@ -1,3 +1,15 @@
+/*
+  Nombre: gerencial.blade.php
+  Proceso: es una plantilla de vista (Blade), diseñada para generar 
+            un Reporte Gerencial en formato PDF o HTML imprimible. 
+            el código toma una lista de datos estadísticos 
+            y los organiza en una tabla profesional y limpia. 
+  Fecha creado: 13 de febrero del 2026
+  Quien lo hizo: Bimodal - A.Lozada
+  Ultima Modificacion:
+  Ultima Modificacion por: 
+*/
+
 <!DOCTYPE html>
 <html lang="es">
 <head>

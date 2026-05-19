@@ -31,21 +31,22 @@ class AgendaController extends Controller
         }
 
         $datosAgenda = $this->agendaService->obtenerDatosAgenda($request);
-        
+
         return Inertia::render('RTR/ListaClientes', [
             'clientes' => [
                 'data' => $datosAgenda['clientes']->items(),
-                'links' => $this->formatearLinks($datosAgenda['clientes']),
-                'meta' => [
-                    'current_page' => $datosAgenda['clientes']->currentPage(),
-                    'last_page' => $datosAgenda['clientes']->lastPage(),
-                    'total' => $datosAgenda['clientes']->total(),
-                ]
+                               'links' => $this->formatearLinks($datosAgenda['clientes']),
+                               'meta' => [
+                                   'current_page' => $datosAgenda['clientes']->currentPage(),
+                               'last_page' => $datosAgenda['clientes']->lastPage(),
+                               'per_page' => $datosAgenda['clientes']->perPage(),
+                               'total' => $datosAgenda['clientes']->total(),
+                               ]
             ],
             'estadisticas' => $datosAgenda['estadisticas'],
             'selectedFabricante' => $this->contextService->getActiveId(),
-            'filtros' => $request->only(['idRfv', 'idCliente', 'search', 'page']),
-            'mensaje' => $datosAgenda['mensaje'] ?? null
+                               'filtros' => $request->only(['idRfv', 'idCliente', 'search', 'page']),
+                               'mensaje' => $datosAgenda['mensaje'] ?? null
         ]);
     }
 
@@ -56,30 +57,30 @@ class AgendaController extends Controller
             $idFabricante = $this->contextService->getActiveId();
             $idRfv = $request->input('idRfv');
 
-        if ($idRfv) {
-            // Caso A: Se seleccionó un vendedor específico en el combo
-            $datos = $this->agendaService->obtenerDatosParaExcel($request, $idRfv);
-            $nombreArchivo = "agenda_vendedor_{$idRfv}_";
-        } elseif ($user->idgrupo_persona === 'RFV') {
-            // Caso B: El usuario es un vendedor (solo ve lo suyo)
-            $datos = $this->agendaService->obtenerDatosParaExcel($request, $user->idPersona);
-            $nombreArchivo = "mi_agenda_";
-        } elseif ($idFabricante) {
-            // Caso C: SIIF o GRT con empresa seleccionada (Descarga Global)
-            $datos = $this->agendaService->obtenerDatosGeneralesEmpresa($idFabricante);
-            $nombreArchivo = "agenda_general_empresa_";
-        } else {
-            return back()->with('error', 'Debe seleccionar una empresa o un vendedor para exportar.');
-        }
+            if ($idRfv) {
+                // Caso A: Se seleccionó un vendedor específico en el combo
+                $datos = $this->agendaService->obtenerDatosParaExcel($request, $idRfv);
+                $nombreArchivo = "agenda_vendedor_{$idRfv}_";
+            } elseif ($user->idgrupo_persona === 'RFV') {
+                // Caso B: El usuario es un vendedor (solo ve lo suyo)
+                $datos = $this->agendaService->obtenerDatosParaExcel($request, $user->idPersona);
+                $nombreArchivo = "mi_agenda_";
+            } elseif ($idFabricante) {
+                // Caso C: SIIF o GRT con empresa seleccionada (Descarga Global)
+                $datos = $this->agendaService->obtenerDatosGeneralesEmpresa($idFabricante);
+                $nombreArchivo = "agenda_general_empresa_";
+            } else {
+                return back()->with('error', 'Debe seleccionar una empresa o un vendedor para exportar.');
+            }
 
-        if (empty($datos)) {
-            return back()->with('error', 'No se encontraron registros para exportar.');
-        }
+            if (empty($datos)) {
+                return back()->with('error', 'No se encontraron registros para exportar.');
+            }
 
-        return Excel::download(
-            new AgendaExport($datos), 
-            $nombreArchivo . now()->format('Ymd_His') . '.xlsx'
-        );
+            return Excel::download(
+                new AgendaExport($datos),
+                                   $nombreArchivo . now()->format('Ymd_His') . '.xlsx'
+            );
 
             return Excel::download(new AgendaExport($datos), 'agenda_' . now()->format('Ymd_His') . '.xlsx');
         } catch (\Exception $e) {
@@ -95,13 +96,13 @@ class AgendaController extends Controller
     public function getClientes(Request $request) {
         return response()->json($this->representanteService->searchClientesData($request));
     }
-        /**
+    /**
      * Formatea los links de paginación para el formato esperado por el frontend
      */
     private function formatearLinks($paginator): array
     {
         $links = [];
-        
+
         // Link a la primera página
         $links[] = [
             'url' => $paginator->url(1),

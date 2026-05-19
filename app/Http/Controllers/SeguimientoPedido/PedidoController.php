@@ -44,20 +44,20 @@ class PedidoController extends Controller
             $request->fecha_fin,
             $request->rfv_id,
             $request->input('per_page', 15),
-            $request->input('page', 1)
+                                                             $request->input('page', 1)
         );
 
         return response()->json([
             'data' => $ordenes->items(),
-            'meta' => [
-                'current_page' => $ordenes->currentPage(),
-                'last_page' => $ordenes->lastPage(),
-                'total' => $ordenes->total(),
-            ],
-            'links' => [
-                'next' => $ordenes->nextPageUrl(),
-                'prev' => $ordenes->previousPageUrl(),
-            ]
+                                'meta' => [
+                                    'current_page' => $ordenes->currentPage(),
+                                'last_page' => $ordenes->lastPage(),
+                                'total' => $ordenes->total(),
+                                ],
+                                'links' => [
+                                    'next' => $ordenes->nextPageUrl(),
+                                'prev' => $ordenes->previousPageUrl(),
+                                ]
         ]);
     }
 
@@ -73,6 +73,32 @@ class PedidoController extends Controller
         }
 
         return response()->json(['data' => $ordenDetalle]);
+    }
+
+    public function actualizarEstatus(Request $request, string $id): JsonResponse
+    {
+        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $request->validate([
+            'idestatus' => 'required|integer',
+        ]);
+
+        $orden = $this->pedidoService->actualizarEstatusOrden((int)$id, $request->idestatus);
+
+        if (!$orden) {
+            return response()->json(['error' => 'Orden no encontrada o sin acceso'], 404);
+        }
+
+        return response()->json([
+            'message' => 'Estatus actualizado correctamente',
+            'data' => [
+                'idorden' => $orden->idorden,
+                'idestatus' => $orden->idestatus,
+                'estatus' => $orden->estatus->descripcion ?? 'Sin estatus',
+            ]
+        ]);
     }
 
     public function getEstatus(): JsonResponse

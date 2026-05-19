@@ -1,6 +1,7 @@
 <?php
 
-use App\Http\Controllers\Gerencial\gps\gpsController; 
+use App\Http\Controllers\Gerencial\gps\gpsController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Reportes\RepresentantesController;
@@ -16,14 +17,19 @@ Route::post('/api-login', [ApiAuthController::class, 'login']);
 Route::get('/gerencial/gps/ruta', [gpsController::class, 'obtenerRuta'])->name('gps.obtenerRuta');
 Route::middleware(['auth:sanctum', 'report.access'])->group(function () {
 
-        //Route::get('/representantes', [RepresentantesController::class, 'index']);        
+        //Route::get('/representantes', [RepresentantesController::class, 'index']);
         //Route::get('/clientes/{idRfv}', [ClientesController::class, 'getByRfv']);
         //Route::get('/actividades', [ActividadesController::class, 'index']);
         //Route::get('/eventos', [EventosController::class, 'index']);
         //Route::get('/productos', [ProductosController::class, 'index']);
         //Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new']);
-            
 
+});
+
+// --- PUSH SUBSCRIPTIONS (PWA) ---
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'store']);
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy']);
 });
 
 

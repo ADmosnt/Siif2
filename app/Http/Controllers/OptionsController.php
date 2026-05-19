@@ -1,6 +1,10 @@
 <?php
 // app/Http/Controllers/OptionsController.php
 
+//una aclaratoria, el filtro pais es así, pais->estado->ciudad(que sería la capital del estado y ya)
+//se hizo así porque bueno las rutas y bricks eran horribles y como no quería tocar mucho la base de datos se hizo un storeprocedure o como se escriba
+//(es un simplemnte un scrip) que llena la tabla de ciudades con las capitales de cada estado
+
 namespace App\Http\Controllers;
 
 use App\Models\TPaise;
@@ -11,6 +15,7 @@ use App\Models\TLineaProducto;
 use App\Models\TTipoProducto;
 use App\Services\CompanyContextService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OptionsController extends Controller
 {
@@ -37,6 +42,9 @@ class OptionsController extends Controller
             'linea' => $this->searchLineas($term, $page, $perPage),
             'tipo_producto' => $this->searchTiposProducto($term, $page, $perPage),
             'mayorista' => $this->searchMayoristas($term, $page, $perPage),
+            'estado_visita' => $this->searchEstadosVisita($term, $page, $perPage),
+            'ciudad_visita' => $this->searchCiudadesVisita($term, $filters, $page, $perPage),
+            'vendedor' => $this->searchVendedores($term, $page, $perPage),
             default => ['data' => [], 'has_more' => false]
         };
 
@@ -127,6 +135,38 @@ class OptionsController extends Controller
         ];
     }
 
+    private function searchVendedores($term, $page, $perPage)
+    {
+        $idFabricante = $this->contextService->getActiveId();
+        $user = auth()->user();
+
+        $query = TPersona::where('idgrupo_persona', 'RFV')
+            ->where('idFabricante', $idFabricante)
+            ->where('idestatus', 1)
+            ->orderBy('nombre_completo_razon_social');
+
+        // FILTRO DE SEGURIDAD:
+        // Si el usuario que está navegando es un RFV, solo puede verse a sí mismo
+        if ($user->idgrupo_persona === 'RFV') {
+            $query->where('idPersona', $user->idPersona);
+        }
+
+        // Búsqueda por término (nombre)
+        if ($term) {
+            $query->where('nombre_completo_razon_social', 'like', "%{$term}%");
+        }
+
+        $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => collect($paginated->items())->map(fn($v) => [
+                'label' => trim($v->nombre_completo_razon_social) ?: 'Vendedor sin nombre',
+                'value' => $v->idPersona
+            ]),
+            'has_more' => $paginated->hasMorePages()
+        ];
+    }
+    
     private function searchSupervisores($term, $page, $perPage)
     {
         $idFabricante = $this->contextService->getActiveId();
@@ -220,4 +260,80 @@ class OptionsController extends Controller
             'has_more' => $paginated->hasMorePages()
         ];
     }
+
+    //este query no es un error o redundacia, sino que este está pensando para buscar dinamicamente las rutas y zonas 
+// que si tienen visitas asociadas, para no mostrar opciones que al final no arrojen resultados, 
+// por eso se hace un join con actividades representante y personas
+    private function searchEstadosVisita($term, $page, $perPage)
+{
+    $fabricante = $this->contextService->getActiveId();
+    $operador   = $this->contextService->getActiveOperador();
+
+    $query = DB::table('t_actividades_representante as act')
+        ->join('t_personas as cli', 'act.idCliente', '=', 'cli.idPersona')
+        ->join('t_estados as est', 'cli.idestado', '=', 'est.idestado')
+        ->where('cli.idOperador', $operador)
+        ->where('cli.idFabricante', $fabricante)
+        ->select('est.idestado', 'est.nombreCiudad')
+        ->distinct()
+        ->orderBy('est.nombreCiudad');
+
+    if ($term) {
+        $query->where('est.nombreCiudad', 'like', "%{$term}%");
+    }
+
+    $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+    return [
+        'data'     => collect($paginated->items())->map(fn($e) => [
+            'label' => $e->nombreCiudad,
+            'value' => $e->idestado,
+        ]),
+        'has_more' => $paginated->hasMorePages(),
+    ];
+}
+
+//este metodo por ahora parece redudante o inutil ya que directamente no hay rutas como tal, o sea están pero vueltas un asco, 
+// pero pueden dejar este metodo para cuando se corrija eso y lo puedan usar corretamente
+private function searchCiudadesVisita($term, $filters, $page, $perPage)
+{
+    $fabricante = $this->contextService->getActiveId();
+    $operador   = $this->contextService->getActiveOperador();
+
+    $query = DB::table('t_actividades_representante as act')
+        ->join('t_personas as cli', 'act.idCliente', '=', 'cli.idPersona')
+        ->join('t_ciudades as ciu', 'cli.idciudad', '=', 'ciu.idCiudad')
+        ->where('cli.idOperador', $operador)
+        ->where('cli.idFabricante', $fabricante)
+        ->select('ciu.idCiudad', 'ciu.nombreCiudad', 'ciu.idestado')
+        ->distinct()
+        ->orderBy('ciu.nombreCiudad');
+
+    // Filtrar por estado si ya seleccionó uno
+    if (!empty($filters['estado'])) {
+        $estadoId = is_array($filters['estado'])
+            ? ($filters['estado']['value'] ?? null)
+            : $filters['estado'];
+
+        if ($estadoId) {
+            $query->where('ciu.idestado', $estadoId);
+        }
+    } else {
+        return ['data' => [], 'has_more' => false];
+    }
+
+    if ($term) {
+        $query->where('ciu.nombreCiudad', 'like', "%{$term}%");
+    }
+
+    $paginated = $query->paginate($perPage, ['*'], 'page', $page);
+
+    return [
+        'data'     => collect($paginated->items())->map(fn($c) => [
+            'label' => $c->nombreCiudad,
+            'value' => $c->idCiudad,
+        ]),
+        'has_more' => $paginated->hasMorePages(),
+    ];
+}
 }

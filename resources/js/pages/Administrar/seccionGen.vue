@@ -1,4 +1,4 @@
-<!--resources/js/pages/Administrar/seccion-->
+<!--resources/js/pages/Administrar/seccionGen-->
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
@@ -14,6 +14,11 @@ const props = defineProps<{
   items: any;
   options: Record<string, any>;
   filters?: { search?: string };
+  permissions: {
+    can_create: boolean;
+    can_update: boolean;
+    can_delete: boolean;
+  };
 }>()
 
 // --- CONFIGURACIÓN ---
@@ -27,6 +32,7 @@ const config = computed(() => configMap[props.tipo] || {
 
 // --- ESTADO ---
 const search = ref(props.filters?.search || '')
+const pageSize = ref(props.filters?.size || '15')
 const showModal = ref(false)
 const isEditing = ref(false)
 const editId = ref<number | null>(null)
@@ -118,13 +124,16 @@ function handleSubmit() {
 
 // --- BUSCADOR ---
 const handleSearch = useDebounceFn((val: string) => {
-  router.get(window.location.pathname, { search: val }, { 
+  router.get(window.location.pathname, { search: search.value, size: pageSize.value}, { 
     preserveState: true, 
-    replace: true 
+    replace: true,
+    preserveScroll: true
   })
 }, 500)
 
-watch(search, handleSearch)
+watch([search, pageSize], () => {
+  handleSearch()
+})
 
 // --- ACCIONES TABLA ---
 const tableActions = [
@@ -140,6 +149,14 @@ const tableActions = [
     } 
   }
 ]
+
+const filteredActions = computed(() => {
+  return tableActions.filter(action => {
+    if (action.key === 'edit') return props.permissions.can_update
+    if (action.key === 'delete') return props.permissions.can_delete
+    return true
+  })
+})
 </script>
 
 <template>
@@ -159,19 +176,20 @@ const tableActions = [
       <GlobalTable
         :columns="config.columns"
         :rows="items.data" 
-        :actions="tableActions"
+        :actions="filteredActions"
         
         :links="items.meta ? items.meta.links : items.links"
         :total-records="items.total"
-        :page-size="String(items.per_page)"
+        :page-size="String(pageSize)"
+        @update:page-size="(val) => pageSize = val"
         :current-page="items.current_page"
         
-        :show-add-button="true"
+        :show-add-button="permissions.can_create"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`" 
         add-button-label-short="+"
         
-        :auto-add-actions-column="true"
-        
+        :auto-add-actions-column="filteredActions.length > 0"
+
         @add="openCreateModal"
       />
 

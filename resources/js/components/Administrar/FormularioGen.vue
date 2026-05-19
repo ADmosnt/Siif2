@@ -24,7 +24,7 @@ const loadingFields = ref<Record<string, boolean>>({})
 // Campos que requieren búsqueda dinámica
 const DYNAMIC_FIELDS = [
   'pais', 'estado', 'ciudad', 'supervisor',
-  'linea', 'tipo_producto', 'mayorista'
+  'linea', 'tipo_producto', 'mayorista', 'vendedor'
 ]
 
 // Computed para saber si un campo debe estar deshabilitado
@@ -131,13 +131,15 @@ watch(() => props.form.estado, (newEstado, oldEstado) => {
 
 // Cargar opciones iniciales para país y supervisor al montar
 onMounted(() => {
-  if (props.fields.some(f => f.name === 'pais')) {handleDynamicSearch('pais', '')}
+  
+  if (props.fields.some(f => f.name === 'vendedor')) handleDynamicSearch('vendedor', '')
   if (props.fields.some(f => f.name === 'supervisor')) {handleDynamicSearch('supervisor', '')}
 
   if (props.fields.some(f => f.name === 'linea')) handleDynamicSearch('linea', '')
   if (props.fields.some(f => f.name === 'tipo_producto')) handleDynamicSearch('tipo_producto', '')
   if (props.fields.some(f => f.name === 'mayorista')) handleDynamicSearch('mayorista', '')
   
+  if (props.fields.some(f => f.name === 'pais')) {handleDynamicSearch('pais', '')}
   if (props.form.pais) {handleDynamicSearch('estado', '')}
   if (props.form.estado) {handleDynamicSearch('ciudad', '')}
 })

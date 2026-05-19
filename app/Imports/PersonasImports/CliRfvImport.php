@@ -12,6 +12,7 @@ use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Validators\Failure;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Illuminate\Support\Facades\Auth;
 use App\Models\TPersona;
 use App\Models\RClienteRfv;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 
-class CliRfvImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, WithValidation, SkipsOnError, SkipsOnFailure, WithChunkReading
+class CliRfvImport implements OnEachRow, WithHeadingRow, WithMultipleSheets, WithValidation, SkipsOnError, SkipsOnFailure, WithChunkReading, SkipsEmptyRows
 {
     private $idFabricante;
     protected $failures = [];

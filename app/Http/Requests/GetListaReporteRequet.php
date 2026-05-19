@@ -17,6 +17,19 @@ class GetListaReporteRequet extends FormRequest
     /**
      * Reglas de validación.
      */
+    protected function prepareForValidation(): void
+    {
+        $fechaInicio = $this->input('fechaInicio');
+        $fechaFin = $this->input('fechaFin');
+
+        if ($fechaInicio && $fechaFin && strtotime($fechaInicio) > strtotime($fechaFin)) {
+            $this->merge([
+                'fechaInicio' => $fechaFin,
+                'fechaFin' => $fechaInicio,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -29,7 +42,6 @@ class GetListaReporteRequet extends FormRequest
                 'required',
                 'date',
                 'date_format:Y-m-d',
-                'after_or_equal:fechaInicio',
             ],
         
             'per_page' => [
@@ -46,17 +58,4 @@ class GetListaReporteRequet extends FormRequest
         ];
     }
 
-    /**
-     * Mensajes de error personalizados (opcional pero útil).
-     */
-    public function messages(): array
-    {
-        return [
-            'fechaInicio.required' => 'La fecha de inicio es obligatoria.',
-            'fechaInicio.date_format' => 'La fecha de inicio debe tener el formato AAAA-MM-DD.',
-            'fechaFin.required' => 'La fecha de fin es obligatoria.',
-            'fechaFin.date_format' => 'La fecha de fin debe tener el formato AAAA-MM-DD.',
-            'fechaFin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',
-        ];
-    }
 }

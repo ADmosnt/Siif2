@@ -3,11 +3,14 @@
 import { Frame } from 'lucide-vue-next'
 import {FileLinesIcon, ClockIcon, TransferArrowsIcon, SiifIcon, FaqIcon, ContactIcon } from '@/components/icons'
 import NavMain from '@/components/ui/sidebarShadcn/NavMain.vue'
-import NavProjects from '@/components/ui/sidebarShadcn/NavProjects.vue'
 import NavSecondary from '@/components/ui/sidebarShadcn/NavSecondary.vue'
 import NavUser from '@/components/ui/sidebarShadcn/NavUser.vue'
 import {  Sidebar,  SidebarContent,  SidebarFooter,  SidebarHeader,  SidebarMenu,  SidebarMenuButton,  SidebarMenuItem,  type SidebarProps,} from '@/components/ui/sidebar'
+import { usePage } from '@inertiajs/vue3'
+import {computed} from 'vue'
 
+const page = usePage()
+const userRole = computed(() => page.props.auth.role)
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
@@ -24,6 +27,7 @@ const data = {
     {
       title: 'Consulta Gerencial',
       url: '/consulta-gerencial',
+      role: ['SIIF', 'GRT', 'SUP'],
       icon: FileLinesIcon,
     },  
     {
@@ -66,26 +70,80 @@ const data = {
         },
       ],
     },
-
-  ],
-  projects: [
     {
-      name: 'Conciliar Facturas',
-      url: 'consolidar',
+      title: 'Administrar',
+      url: '#',
+      role: ['SIIF', 'GRT', 'SUP'],
       icon: Frame,
+      isActive: true,
+      items: [
+        {
+          title: 'Conciliar Facturas',
+          url: 'consolidar',
+        },
+        {
+          title: 'Monitor de Archivos',
+          url: '/monitor',
+        },
+      ],
     },
-    // {
-    //   name: 'Sales & Marketing',
-    //   url: '#',
-    //   icon: PieChart,
-    // },
-    // {
-    //   name: 'Travel',
-    //   url: '#',
-    //   icon: Map,
-    // },
+
+    {
+      title: 'Personas',
+      url: '#',
+      icon: Frame,
+      items: [
+        {
+          title: 'Clientes',
+          url: '/clientes',
+        },
+        {
+          title: 'Representantes',
+          url: '/representantes',
+        },
+        {
+          title: 'Mayoristas',
+          url: '/mayoristas',
+        },
+        {
+          title: 'Supervisores',
+          url: '/supervisores',
+        },
+        {
+          title: 'Gerentes',
+          url: '/gerentes',
+        },
+        {
+          title: 'Empresas',
+          url: '/empresas',
+          role: ['SIIF'],
+        },
+      ], 
+    },
+    
+    {
+      title: 'Artículos',
+      url: '#',
+      icon: Frame,
+      items: [
+        {
+          title: 'Productos',
+          url: '/productos-lista',
+        },
+        {
+          title: 'Muestras',
+          url: '/muestras',
+        },
+      ],
+    }
   ],
+
   navSecondary: [
+    {
+      title: 'Notificaciones',
+      url: '/notificacion',
+      icon: ContactIcon,
+    },
     {
       title: 'Preguntas Frecuentes',
       url: '/preguntas',
@@ -96,6 +154,7 @@ const data = {
       url: '/Contacto',
       icon: ContactIcon,
     },
+
     // {
     //   title: 'Feedback',
     //   url: '#',
@@ -103,6 +162,28 @@ const data = {
     // },
   ],
 }
+
+//filtrar recursivamente
+const filterByRole = (items: any[]) =>{
+  return items
+  .filter(item => {
+    if (!item.role) return true
+    return item.role.includes(userRole.value)
+  })
+  .map(item=>{
+    if (item.items) {
+      return {
+        ...item,
+        items: filterByRole(item.items)
+      }
+    }
+    return item
+  })
+}
+
+//datos filtrados por role
+const filteredNavMain = computed(() => filterByRole(data.navMain))
+const filteredNavSecondary = computed(() => filterByRole(data.navSecondary))
 </script>
 
 <template>
@@ -124,9 +205,9 @@ const data = {
       </SidebarMenu>
     </SidebarHeader>
     <SidebarContent>
-      <NavMain :items="data.navMain" />
-      <NavProjects :projects="data.projects" />
-      <NavSecondary :items="data.navSecondary" class="mt-auto" />
+      <NavMain :items="filteredNavMain" />
+
+      <NavSecondary :items="filteredNavSecondary" class="mt-auto" />
     </SidebarContent>
     <SidebarFooter>
       <NavUser />

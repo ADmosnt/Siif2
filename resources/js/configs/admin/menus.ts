@@ -50,6 +50,8 @@ export const menuMap: Record<string, MenuConfig> = {
     actions: [
       { label: 'Muestras', to: '/muestras', icon: CubeIcon, bgColor: '#34c759', footerColor: '#28a745' },
       { label: 'Productos', to: '/productos-lista', icon: CubeIcon, bgColor: '#34c759', footerColor: '#28a745' },
+      { label: 'Linea-Producto', to: '/lineas', icon: CubeIcon, bgColor: '#34c759', footerColor: '#28a745' },
+      { label: 'Tipo-Producto', to: '/tipos', icon: CubeIcon, bgColor: '#34c759', footerColor: '#28a745' },
     ]
   }
 }

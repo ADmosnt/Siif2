@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 
 class TPersona extends Authenticatable
 {
-    use Notifiable,HasApiTokens;
+    use Notifiable, HasApiTokens, HasPushSubscriptions;
 
 
     // -- Constantes --

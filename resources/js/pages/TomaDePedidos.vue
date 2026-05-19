@@ -89,11 +89,6 @@ const handleClienteUpdate = (value: { value: string; label: string } | null) => 
   selectedCliente.value = value;
 };
 
-// Función para manejar el cambio de apertura del dropdown (opcional)
-const handleClienteOpenUpdate = (isOpen: boolean) => {
-  console.log('Cliente Combobox abierto/cerrado:', isOpen);
-};
-
 // Función para resetear el formulario
 const resetForm = () => {
   selectedCliente.value = null;
@@ -178,20 +173,26 @@ const procesarPedido = () => {
   );
 };
 const reloadProductos = (page: number, pageSize: string, search: string) => {
+  console.log('reloadProductos llamado:', { page, pageSize, search })  // 👈
   productosPage.value = page;
   productosPageSize.value = pageSize;
   productosSearch.value = search;
 
   router.reload({
     only: ['productos'],
+    preserveState: true,
     data: {
       page: page,
       size: parseInt(pageSize),
       search: search,
       idRfv: selectedRFV.value,
     },
+    onStart: () => console.log('reload onStart'),      // 👈
+    onFinish: () => console.log('reload onFinish'),    // 👈
+    onSuccess: () => console.log('reload onSuccess'),  // 👈
+    onError: (e) => console.log('reload onError', e),  // 👈
   });
-};
+}
 
 // Watcher para cambios de paginación
 watch([productosPage, productosPageSize], ([newPage, newSize]) => {
@@ -210,7 +211,8 @@ watch(selectedRFV, (newVal, oldVal) => {
 
     router.reload({
       only: ['mayoristas', 'productos'],
-      data: { 
+      preserveState: true,
+      data: {
         idRfv: newVal,
         page: 1,
         size: 15,
@@ -279,7 +281,6 @@ watch(representantes, (newList) => {
               :disabled="!selectedRFV || loading"
               placeholder="Buscar cliente…"
               @update:model-value="handleClienteUpdate"
-              @update:open="handleClienteOpenUpdate"
             />
           </div>
 

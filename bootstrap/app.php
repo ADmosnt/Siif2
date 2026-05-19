@@ -19,6 +19,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'report.access' => \App\Http\Middleware\CheckReportAccess::class,
         ]);
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
+        ]);
         $middleware->statefulApi();
 
         $middleware->web(append: [

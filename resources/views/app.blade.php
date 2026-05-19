@@ -33,6 +33,16 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
+        {{-- PWA Meta Tags --}}
+        <meta name="theme-color" content="#4B5563">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default">
+        <meta name="apple-mobile-web-app-title" content="SIIF2">
+        <link rel="apple-touch-icon" href="/pwa-192x192.png">
+        <link rel="manifest" href="/manifest.json">
+        <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key', '') }}">
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 

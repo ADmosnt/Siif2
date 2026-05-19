@@ -24,9 +24,12 @@ use App\Http\Controllers\Admin\PersonaAdminController;
 use App\Http\Controllers\Admin\ProductoAdminController;
 use App\Http\Controllers\OptionsController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\NotificacionWebController;
+use App\Http\Controllers\ConsultaReporte\ConsultaReporteController;
+use \App\Http\Controllers\Api\PushSubscriptionController;
 
 // ================================
-// 1. RUTA DE AUTENTICACIÓN Y CSRF
+// RUTA DE AUTENTICACIÓN Y CSRF
 // ================================
 Route::get('/get-csrf-token', function() {
     return response()->json(['csrf_token' => csrf_token()]);
@@ -34,8 +37,9 @@ Route::get('/get-csrf-token', function() {
 
 Route::get('/', fn() => Inertia::render('auth/Login'))->name('login');
 
+
 // ================================
-// 2. RUTAS PROTEGIDAS (AUTH)
+// RUTAS PROTEGIDAS (AUTH)
 // ================================
 Route::middleware(['auth',])->group(function () {
     
@@ -47,7 +51,7 @@ Route::middleware(['auth',])->group(function () {
 
     // --- DASHBOARD Y MONITOR ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
-    Route::get('/monitor', [MonitorController::class, 'index'])->name('monitor.index');
+    Route::get('/monitor', [MonitorController::class, 'index'])->name('monitor.index')->middleware('role:SIIF,GRT,SUP');
 
     // RUTAS DE MENÚS GENÉRICOS (Selección de entidad)
     Route::get('/personas', function () {return Inertia::render('Administrar/MenuGen', ['tipo' => 'personas']);})->name('menu.personas');
@@ -64,6 +68,7 @@ Route::middleware(['auth',])->group(function () {
         'mayoristas'     => 'mayoristas',
         'supervisores'   => 'supervisores',
         'gerentes'       => 'gerentes',
+        'empresas'       => 'empresas',
     ];
 
     foreach ($rutasGenericasPersonas as $url => $tipo) {
@@ -78,6 +83,9 @@ Route::middleware(['auth',])->group(function () {
     $rutasGenericasProductos = [
         'muestras'       => 'muestras',
         'productos-lista'=> 'productos',
+        'lineas' => 'lineas_productos',
+        'tipos'  => 'tipos_productos',
+
     ];
 
         foreach ($rutasGenericasProductos as $url => $tipo) {
@@ -88,11 +96,17 @@ Route::middleware(['auth',])->group(function () {
             Route::delete('/{id}', [ProductoAdminController::class, 'destroy'])->defaults('tipo', $tipo);
         });
     }
-    // --- REPORTES (RTR) ---
-    Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
+    // --- NUEVO REPORTE ---
     Route::get('/nuevo-reporte', [ReporteController::class, 'index'])->name('nuevo-reporte.index');
-    Route::get('/reporte-agenda', fn() => Inertia::render('RTR/ReporteAgenda'))->name('ReporteAgenda');
-    Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
+    Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
+    Route::get('/exportar/visitas',  [ConsultaReporteController::class, 'exportarVisitas'])->name('exportar.visitas');
+    Route::get('/exportar/ordenes',  [ConsultaReporteController::class, 'exportarOrdenes'])->name('exportar.ordenes');
+
+    // --- CONSULTA DE REPORTE ---
+    Route::get('/consulta-reporte', [ConsultaReporteController::class, 'index'])->name('ConsultaReporte');
+    Route::get('/get-data-rfv', [ConsultaReporteController::class, 'getRepresentantes'])->name('get.data.rfv');
+    Route::post('/consulta/visita', [ConsultaReporteController::class, 'consultaVisita'])->name('consulta.vista');
+    Route::post('/consulta/ordenes', [ConsultaReporteController::class, 'consultaOrden'])->name('consulta.ordenes');
 
     // --- LISTA DE CLIENTES ---
     Route::get('/agenda', [AgendaController::class, 'index'])->name('rtr.lista-clientes');
@@ -101,6 +115,7 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/agenda-clientes-list', [AgendaController::class, 'getClientes'])->name('agenda.clientes.list');
 
     // Rutas para listas de reportes y datos relacionados
+    Route::get('/reporte-agenda', fn() => Inertia::render('RTR/ReporteAgenda'))->name('ReporteAgenda');
     Route::get('/reportes', [ListaReporteController::class, 'getReports'])->name('reportes.lista');
     Route::get('/representantes-data', [ListaReporteController::class, 'getRepresentantes'])->name('reportes.representantes');
 
@@ -108,22 +123,25 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/clientes/search', [ReporteController::class, 'searchClientes'])->name('clientes.search');
 
     // --- GERENCIAL ---
-    Route::get('/consulta-gerencial', [gerencialController::class, 'index'])->name('gerencial.index');
-    
+    Route::get('/consulta-gerencial', [gerencialController::class, 'index'])->name('gerencial.index')->middleware('role:SIIF,GRT,SUP');
+    Route::get('/gerencial/representantes', [GerencialController::class, 'getRepresentantesData'])->name('gerencial.representantes')->middleware('role:SIIF,GRT,SUP');;
+
     // --- SEGUIMIENTO DE PEDIDOS ---
     Route::get('/seguimiento', [PedidoController::class, 'seguimiento'])->name('pedidos.seguimiento');
     Route::get('/representantes-data-pedidos', [PedidoController::class, 'getRepresentantes'])->name('pedidos.representantes');
     Route::get('/pedidos', [PedidoController::class, 'getOrdenesFiltradas'])->name('pedidos.filtradas');
     Route::get('/pedidos/{id}', [PedidoController::class, 'getOrdenDetalle'])->name('pedidos.detalle');
     Route::get('/estatus-ordenes', [PedidoController::class, 'getEstatus'])->name('pedidos.estatus');
+    Route::patch('/pedidos/{id}/estatus', [PedidoController::class, 'actualizarEstatus'])->name('pedidos.actualizar-estatus');
 
     // --- TOMA DE PEDIDOS (TDP) ---
     Route::get('/tdp', [ReporteController::class, 'index'])->name('toma-de-pedidos.index');
     Route::post('/toma-de-pedidos', [ProcesarOrdenController::class, 'store'])->name('toma-de-pedidos.procesar');
 
     // --- CONCILIACIÓN DE FACTURAS ---
-    Route::get('/consolidar', [ConciliarController::class, 'index'])->name('consolidar.index');
-    Route::post('/conciliar-factura', [ConciliarFacturaController::class, 'store'])->name('conciliar-factura.store');
+    Route::get('/consolidar', [ConciliarController::class, 'index'])->name('consolidar.index')->middleware('role:SIIF,GRT,SUP');
+    Route::get('/conciliar/buscar-ordenes', [ConciliarController::class, 'buscarOrdenes'])->name('conciliar.buscar-ordenes')->middleware('role:SIIF,GRT,SUP');
+    Route::post('/conciliar-factura', [ConciliarFacturaController::class, 'store'])->name('conciliar-factura.store')->middleware('role:SIIF,GRT,SUP');
 
     // --- PLANIFICADOR / CALENDARIO ---
     // API Json para el calendario
@@ -137,45 +155,55 @@ Route::middleware(['auth',])->group(function () {
     Route::post('/tmp-planificaciones', [TmpPlanificadorController::class, 'store'])->name('tmp_planificaciones.store');
     Route::put('/tmp-planificaciones/{id}', [TmpPlanificadorController::class, 'update'])->name('tmp_planificaciones.update');
     Route::delete('/tmp-planificaciones/{id}', [TmpPlanificadorController::class, 'destroy'])->name('tmp_planificaciones.destroy');
+    Route::get('/tmp-planificaciones/plantilla-descarga', [TmpPlanificadorController::class, 'descargarPlantilla'])->name('tmp_planificaciones.plantilla');
+    Route::post('/tmp-planificaciones/carga-masiva', [TmpPlanificadorController::class, 'cargaMasiva'])->name('tmp_planificaciones.carga_masiva');
 
-    // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
-    Route::get('/notificacion', fn() => Inertia::render('Notificacion'))->name('notificacion');
-    Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
-    Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
-    Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
+    // --- NOTIFICACIÓN ---
+    Route::get('/notificacion', [NotificacionWebController::class, 'index'])->name('notificacion');
+    Route::post('/notificacion/enviar', [\App\Http\Controllers\NotificacionPushController::class, 'enviar'])->name('notificacion.enviar');
+
+    // --- PUSH SUBSCRIPTIONS (PWA) ---
+    Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::post('/push/unsubscribe', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+
+    //--- CONTACTO ---   
     Route::get('/Contacto', fn() => Inertia::render('Contacto'))->name('Contacto');
-    Route::get('/agregar-operadores', fn() => Inertia::render('Administrar/Operadores'))->name('operadores');
-
-    // ========================================
-    // RUTA PARA EL ENVIO DE COMENTARIO EN LA VISTA DE CONTACTO
-    // ========================================
     Route::post('/contacto', [ContactController::class, 'send'])->name('contact.send');
+
+    // --- PREGUNSTAS FRECUENTES ---
+    Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
+
+    // ================================
+    // RUTAS DE UPLOAD Y EXPORT
+    // ================================
+    // UPLOAD
+    Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
+    Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
+    Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
+
+    // EXPORT
+    Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
+    Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
+    Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
+
+    // =====================================
+    // RUTAS DE EXPORT PDF y EXCEL GERENCIAL
+    // =====================================
+
+    Route::get('/gerencial/export/pdf', [GerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
+    Route::get('/gerencial/export/excel', [GerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
+
+    //estas rutas no sé de que ñame son, pero las dejo aquí mientras tanto
+
+    Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
+    Route::get('/agregar-operadores', fn() => Inertia::render('Administrar/Operadores'))->name('operadores');
 
 });
 
-// ================================
-// 3. RUTAS DE UPLOAD Y EXPORT
-// ================================
-// UPLOAD
-Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
-Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
-Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
 
-// EXPORT
-Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
-Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
-Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
     
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
-
-// =====================================
-// 4. RUTAS DE EXPORT PDF y EXCEL
-// =====================================
-
-Route::get('/gerencial/export/pdf', [GerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
-Route::get('/gerencial/export/excel', [GerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
 
 
 

@@ -5,26 +5,20 @@ namespace App\Http\Controllers\ConciliarFactura;
 use App\Http\Controllers\Controller;
 use App\Services\ConciliarFactService;
 use App\Services\CompanyContextService;
-use App\Services\AccessControlService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 
 class ConciliarController extends Controller
 {
     public function __construct(
         protected ConciliarFactService $conciliarFactService,
         protected CompanyContextService $contextService,
-        protected AccessControlService $accessControl
     ) {}
 
     public function index(Request $request)
     {
-        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
-            $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
-            
-            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
-        }
         try {
             
             $idFabricante = $this->contextService->getActiveId();
@@ -60,5 +54,15 @@ class ConciliarController extends Controller
             Log::error('Error en ConciliarController:', ['msg' => $e->getMessage()]);
             return back()->with('error', 'Error al cargar los datos.');
         }
+    }
+        public function buscarOrdenes(Request $request):JsonResponse
+    {
+
+        $idFabricante = $this->contextService->getActiveId();
+        $term = (string) ($request->input('term') ?? '');
+
+        $opciones = $this->conciliarFactService->buscarOrdenes($idFabricante, $term);
+
+        return response()->json($opciones);
     }
 }

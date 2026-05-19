@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const carritoPagination = ref({
   page: 1,
-  pageSize: '10'
+  pageSize: '15'
 });
 
 // ===== evita errores cuando es null =====
@@ -140,22 +140,11 @@ const handleFetchMayoristas = (payload: { page: number; pageSize: string; search
 };
 
 const handleFetchProductos = (payload: { page: number; pageSize: string; search: string }) => {
-  // Actualizar estados locales
   pageB.value = payload.page;
   pageSizeB.value = payload.pageSize;
   searchB.value = payload.search;
-  
-  // Emitir al padre
   emit('fetch-productos', payload);
 };
-
-watch([pageB, pageSizeB], ([newPage, newSize]) => {
-  emit('fetch-productos', { 
-    page: newPage, 
-    pageSize: newSize, 
-    search: searchB.value 
-  });
-});
 
 
 
@@ -204,16 +193,15 @@ watch([pageB, pageSizeB], ([newPage, newSize]) => {
         @update:page="handleCarritoPageChange" 
         @update:pageSize="handleCarritoPageSizeChange"
       />
-      <AddProducto_modal
-        v-model="showProductoModal"
-        :productos="safeProductos"
-        :current-page="pageB"
-        :page-size="pageSizeB"
-        @confirm="handleConfirmFromModal"
-        @fetch="handleFetchProductos"
-        @update:page="pageB = $event"
-        @update:pageSize="pageSizeB = $event"
-      />
+        <AddProducto_modal
+          v-model="showProductoModal"
+          :productos="safeProductos"
+          :current-page="pageB"
+          :page-size="pageSizeB"
+          @confirm="handleConfirmFromModal"
+          @update:page="handleFetchProductos({ page: $event, pageSize: pageSizeB, search: searchB })"
+          @update:pageSize="handleFetchProductos({ page: 1, pageSize: $event, search: searchB })"
+        />
     </div>
 
   </div>

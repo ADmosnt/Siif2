@@ -54,7 +54,7 @@ class gpsController extends Controller
             'totalVisitas' => $actividades->count()
         ]);
 
-        Log:: info('datos vainas gps' , [
+        Log:: info('datos gps' , [
             'ruta' => ActividadGpsResource::collection($actividades),
             'leyenda' => $leyenda,
             'totalVisitas' => $actividades->count()

@@ -316,7 +316,7 @@ watch(
                         :on-download="() => handleDownload('/export/productos/productoDown', 'Productos')"
                         @file-selected="(file) => handleFileUpload(file, 'productos', 'productos')"
                     />
-                    <Dropzone
+                <!--    <Dropzone
                         label="Materiales para Clientes"
                         :empresa="empresa"
                         :loading="downloadLoading || downloadLoading"
@@ -324,7 +324,7 @@ watch(
                         :on-download="() => handleDownload('/export/productos/materialesDownload', 'Materiales')"
                         @file-selected="(file) => handleFileUpload(file, 'materiales', 'productos')"
                     />
-                                    <!-- el @file-selected= de materiales para clientes no está sirviendo, porque directamente no tiene controlador, ruta, ni nada,-->
+                                     el @file-selected= de materiales para clientes no está sirviendo, porque directamente no tiene controlador, ruta, ni nada,-->
                     </div>
                 </div>
                 </div>

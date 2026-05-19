@@ -7,7 +7,6 @@ import GlobalTable from '../GlobalTable.vue'
 import Input from '../ui/input/Input.vue'
 import vueNumberInput from '../vue-number-input.vue'
 import { type PaginatedData } from '@/types/pagination';
-import { debounce } from 'lodash'
 import { type CarritoItem, Producto} from '@/types/interfaces';
 
 const props = defineProps<{
@@ -25,6 +24,12 @@ const productosData = computed(() => {
 });
 
 const carrito = ref<CarritoItem[]>([])
+
+const leftData = computed(() =>
+  productosData.value.filter(p =>
+    !carrito.value.some(c => c.codigo === p.codigo)
+  )
+)
 
 const search = ref('')
 
@@ -45,16 +50,16 @@ const columnsCarrito = [
 
 // --- Paginación del Servidor (Productos) ---
 const productosPagination = computed(() => ({
+  
   page: props.currentPage || 1,
   pageSize: props.pageSize || '15',
   totalRecords: props.totalRecords || props.productos?.meta?.total || 0,
-  links: props.links || props.productos?.links || []
 }));
 
 // --- Paginación del Carrito (Local) ---
 const carritoPagination = ref({
   page: 1,
-  pageSize: '15' // Usamos string, lo convertimos con parseInt
+  pageSize: '15'
 });
 
 const carritoPaginado = computed(() => {
@@ -64,31 +69,6 @@ const carritoPaginado = computed(() => {
 });
 
 const carritoTotalRecords = computed(() => carrito.value.length);
-
-const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
-  (e: 'confirm', items: CarritoItem[]): void
-  (e: 'update:page', value: number): void;
-  (e: 'update:pageSize', value: string): void;
-  (e: 'search', value: string): void;
-}>()
-
-// Sincroniza el v-model del modal
-const internal = ref(props.modelValue)
-watch(() => props.modelValue, val => {
-    internal.value = val
-    if (val) {
-        // Opcional: Limpiar carrito al abrir
-        carrito.value = [];
-    }
-})
-watch(internal, val => emit('update:modelValue', val))
-
-const emitSearch = debounce(() => {
-    emit('search', search.value);
-}, 300);
-
-watch(search, emitSearch)
 
 // --- Manejadores de Paginación ---
 const handleProductosPageChange = (newPage: number) => {
@@ -107,6 +87,34 @@ const handleCarritoPageSizeChange = (newSize: string) => {
   carritoPagination.value.pageSize = newSize;
   carritoPagination.value.page = 1;
 };
+
+const filteredData = computed(() =>
+  leftData.value.filter(row =>
+    Object.values(row).some(val =>
+      String(val).toLowerCase().includes(search.value.toLowerCase())
+    )
+  )
+)
+
+// Sincroniza el v-model del modal
+const internal = ref(props.modelValue)
+
+watch(() => props.modelValue, (val, oldVal) => {
+    if (val === oldVal) return
+    internal.value = val
+    if (val) { carrito.value = [] }
+})
+watch(internal, (val, oldVal) => {
+    if (val === oldVal) return
+    emit('update:modelValue', val)
+})
+
+const emit = defineEmits<{
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'confirm', items: CarritoItem[]): void
+  (e: 'update:page', value: number): void;
+  (e: 'update:pageSize', value: string): void;
+}>()
 
 function agregarAlCarrito(prod: Producto) {
   const idx = carrito.value.findIndex(p => p.codigo === prod.codigo)
@@ -138,22 +146,30 @@ watch(carrito, (newCarrito) => {
 </script>
 
 <template>
-  <BaseModal v-model="internal" title="Buscar Productos" size="xl">
+  <BaseModal v-model="internal" 
+    title="Buscar Productos" 
+    description=" "
+    size="xl">
     <template #default>
-      <div class="mb-4">
-        <Input v-model="search" type="text" placeholder="Buscar..." />
-      </div>
-      <div class="flex flex-col md:flex-row gap-6">
+
+    <div class="mb-4 flex items-center justify-between gap-2">
+        <Input
+          v-model="search"
+          type="text"
+          placeholder="Buscar..."
+          class="border rounded px-3 py-1 w-full"
+        />
+      </div> 
+    <div class="flex flex-col md:flex-row gap-6">
         <div class="flex-1">
           <h3 class="text-sm font-medium mb-2">Todos los productos</h3>
             <div class="max-h-[400px] overflow-y-auto">
               <GlobalTable
                 :columns="columnsProducto"
-                :rows="productosData"
+                :rows="filteredData"
                 :total-records="productosPagination.totalRecords"
                 :current-page="productosPagination.page"
                 :page-size="productosPagination.pageSize"
-                :links="productosPagination.links"
                 :actions="[{ key: 'add', handler: agregarAlCarrito }]"
                 autoAddActionsColumn
                 :loading="loading"
@@ -183,8 +199,8 @@ watch(carrito, (newCarrito) => {
       </div>
     </template>
     <template #footer>
-      <Button @click="internal = false; carrito = []">Cancelar</Button>
-      <Button @click="internal = false; emit('confirm', carrito); carrito = []">Agregar</Button>
+      <Button variant="default" @click="internal = false; carrito = []">Cancelar</Button>
+      <Button variant="default" @click="internal = false; emit('confirm', carrito); carrito = []">Agregar</Button>
     </template>
   </BaseModal>
 </template>

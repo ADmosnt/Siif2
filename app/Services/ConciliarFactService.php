@@ -74,6 +74,32 @@ class ConciliarFactService
             ]);
     }
 
+        /**
+     * Búsqueda dinámica de órdenes
+     */
+    public function buscarOrdenes(?string $idFabricante, string $term): array
+    {
+        if (!$idFabricante) return [];
+
+        return TOrdene::withoutGlobalScopes()
+            ->with(['cliente:idPersona,nombre_completo_razon_social'])
+            ->where('idFabricante', $idFabricante)
+            ->whereNull('idfactura')
+            ->where(function($q) use ($term) {
+                $q->where('idorden', 'LIKE', "%{$term}%")
+                ->orWhereHas('cliente', fn($q2) =>
+                    $q2->where('nombre_completo_razon_social', 'LIKE', "%{$term}%")
+                );
+            })
+            ->orderBy('fechaOrden', 'desc')
+            ->limit(30)
+            ->get()
+            ->map(fn($orden) => [
+                'value' => (string) $orden->idorden,
+                'label' => "{$orden->idorden} - " . ($orden->cliente?->nombre_completo_razon_social ?? 'N/A') . " ({$orden->fechaOrden->format('d/m/Y')})",
+            ])
+            ->toArray();
+    }
     /**
      * Obtiene la información completa de una orden específica con paginación de productos
      */

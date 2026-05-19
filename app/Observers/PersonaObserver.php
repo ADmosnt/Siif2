@@ -39,12 +39,16 @@ class PersonaObserver
             'idOperador' => $idOp, 'idFabricante' => $idFab, 'descripcion_tipo_incidentes' =>'SIN INCIDENTES'
         ]);
 
-        TCategoria::create([
+        TCategoria::insert([
             ['idOperador' => $idOp, 'idFabricante' => $idFab, 'idcategorias' =>'MUES', 'NombreCategorias' => 'Muestras'],
             ['idOperador' => $idOp, 'idFabricante' => $idFab, 'idcategorias' =>'PROD', 'NombreCategorias' => 'Productos'],
-            ]);
+        ]);
 
-        TEstatusOrdene::create([
+        // Obtener el próximo idestatus disponible para este idOperador
+        $maxIdEstatus = \App\Models\TEstatusOrdene::where('idOperador', $idOp)->max('idestatus') ?? 0;
+        $nextIdEstatus = $maxIdEstatus + 1;
+
+        TEstatusOrdene::insert([
             ['idOperador' => $idOp, 'idFabricante' => $idFab,'descripcion' => 'Registrada'],
             ['idOperador' => $idOp, 'idFabricante' => $idFab,'descripcion' => 'Generada'],
             ['idOperador' => $idOp, 'idFabricante' => $idFab,'descripcion' => 'Facturada'],

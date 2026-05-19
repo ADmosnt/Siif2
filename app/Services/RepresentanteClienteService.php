@@ -137,28 +137,49 @@ class RepresentanteClienteService
         try {
             $query = $this->baseClientesQuery($idRfv)
                 ->select(
-                    'r_cliente_rfv.id_cliente as id_cliente',
-                    't_personas.nombre_completo_razon_social as nombre_completo_razon_social',
-                    't_personas.direccion',
-                    't_personas.telefono'
+                        'r_cliente_rfv.id_cliente', 
+                        't_personas.*'
                 );
 
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('t_personas.nombre_completo_razon_social', 'like', "%{$search}%")
-                        ->orWhere('r_cliente_rfv.id_cliente', 'like', "%{$search}%");
+                        ->orWhere('r_cliente_rfv.id_cliente', 'like', "%{$search}%")
+                        ->orWhere('t_personas.documento_identidad', 'like', "%{$search}%");
                 });
             }
 
-            return $query->orderBy('t_personas.nombre_completo_razon_social')
-                ->paginate($size, ['*'], 'page', $page)
-                ->withQueryString()
-                ->through(fn ($item) => [
-                    'id' => $item->id_cliente,
-                    'nombre' => $item->nombre_completo_razon_social,
-                    'direccion' => $item->direccion,
-                    'telefono' => $item->telefono
-                ]);
+        return $query->orderBy('t_personas.nombre_completo_razon_social')
+                    ->paginate($size, ['*'], 'page', $page)
+                    ->withQueryString()
+                    ->through(fn ($item) => [
+                        // Normalizamos las llaves para que coincidan con lo que espera el Resource
+                        'idPersona'         => $item->id_cliente, 
+                        'nombre_persona'    => $item->nombre_persona,
+                        'apellido_persona'  => $item->apellido_persona,
+                        'nombre_completo_razon_social' => $item->nombre_completo_razon_social,
+                        'email'             => $item->email,
+                        'documento_identidad' => $item->documento_identidad,
+                        'telefono_persona'  => $item->telefono_persona,
+                        'direccion_domicilio' => $item->direccion_domicilio,
+                        'idgrupo_persona'   => $item->idgrupo_persona ?? 'CLI',
+                        
+                        // Campos requeridos por el Metadata (Modales)
+                        'cod_tipo_persona'  => $item->cod_tipo_persona,
+                        'sexo_genero_persona' => $item->sexo_genero_persona,
+                        'idespecialidad'    => $item->idespecialidad,
+                        'idclase_persona'   => $item->idclase_persona,
+                        'idranking'         => $item->idranking,
+                        'idfrecuencia'      => $item->idfrecuencia,
+                        'idciclos'          => $item->idciclos,
+                        'idpais'            => $item->idpais,
+                        'idestado'          => $item->idestado,
+                        'idciudad'          => $item->idciudad,
+                        'idsupervisor'      => $item->idsupervisor,
+                        'name'              => $item->name,
+                        'descuento'         => $item->descuento,
+                        'fecha_nacimiento_registro' => $item->fecha_nacimiento_registro,
+                    ]);
 
         } catch (\Exception $e) {
             Log::error('Error obteniendo clientes paginados:', [

@@ -22,7 +22,8 @@ export interface CrudConfig {
   routePrefix: string;
   breadcrumbs: BreadcrumbItem[];
   columns: { key: string; label: string; className?: string }[];
-  fields: FieldConfig[]; 
+  fields: FieldConfig[];
+  rolesQuePuedenEditar?: string[];
 }
 
 // ==========================================
@@ -59,12 +60,6 @@ const FIELDS_PERSONAL_INFO: FieldConfig[] = [
   
   { name: 'telefono', label: 'Teléfono', type: 'text', class: 'md:col-span-1' },
   { name: 'direccion', label: 'Dirección', type: 'text', class: 'md:col-span-2' },
-  
-  // Género
-  { 
-    name: 'genero', label: 'Género', type: 'radio', class: 'md:col-span-3', 
-    options: [{ label: 'Femenino', value: 'F' }, { label: 'Masculino', value: 'M' }] 
-  },
 ];
 
 // Campos: Ubicación (Parte Inferior del Modal)
@@ -85,6 +80,7 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   clientes: {
     title: 'Agregar - Cliente',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP', 'RFV'],
     routePrefix: 'clientes',
     breadcrumbs: [
         { label: 'SIIF', href: '/dashboard' },
@@ -98,7 +94,8 @@ export const configMap: Record<string, CrudConfig> = {
       { name: 'especialidad', label: 'Especialidad', type: 'combobox', class: 'md:col-span-1', options: [] },
       { name: 'clase', label: 'Clase', type: 'combobox', class: 'md:col-span-1', options: [] },
       { name: 'ranking', label: 'Ranking', type: 'combobox', class: 'md:col-span-1', options: [] },
-      { name: 'frecuencia', label: 'Frecuencia', type: 'combobox', class: 'md:col-span-3', options: [] },
+      { name: 'frecuencia', label: 'Frecuencia', type: 'combobox', class: 'md:col-span-1', options: [] },
+      { name: 'vendedor', label: 'Vendedor Asignado (RFV)', type: 'combobox', class: 'md:col-span-2', options: [] },
       ...FIELDS_UBICACION
     ]
   },
@@ -130,6 +127,7 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   mayoristas: {
     title: 'Agregar - Mayorista',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'mayoristas',
     breadcrumbs: [
         { label: 'SIIF', href: '/dashboard' },
@@ -190,6 +188,32 @@ export const configMap: Record<string, CrudConfig> = {
     ]
   },
 
+  // ------------------------------------------------
+  // EMPRESAS
+  // ------------------------------------------------
+
+  empresas: {
+    title: 'Administrar Empresas (Fabricantes)',
+    rolesQuePuedenEditar: ['SIIF'], // Solo el Super Administrador
+    routePrefix: 'empresas',
+    breadcrumbs: [
+        { label: 'SIIF', href: '/dashboard' },
+        { label: 'Configuración' },
+        { label: 'Empresas' }
+    ],
+    columns: COLS_PERSONA,
+      fields: [
+        { name: 'nombre', label: 'Razón Social / Nombre', type: 'text', class: 'md:col-span-2' },
+        // Reemplazamos 'apellido' por 'idOperador' solo para este módulo
+        { name: 'idOperador', label: 'Código de Operador', type: 'text', class: 'md:col-span-1' },
+        { name: 'idFabricante', label: 'Código de Fabricante', type: 'text', class: 'md:col-span-2' },
+        { name: 'documento', label: 'RIF / Documento', type: 'text', class: 'md:col-span-1' },
+        { name: 'email', label: 'Correo Electrónico', type: 'email', class: 'md:col-span-2' },
+        { name: 'telefono', label: 'Teléfono', type: 'text', class: 'md:col-span-1' },
+        { name: 'direccion', label: 'Dirección Fiscal', type: 'text', class: 'md:col-span-3' },
+        ...FIELDS_UBICACION
+      ]
+  },
   // ==========================
   // GRUPO: PRODUCTOS
   // ==========================
@@ -199,6 +223,7 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   muestras: {
     title: 'Agregar Muestra',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'muestras',
     breadcrumbs: [
         { label: 'SIIF', href: '/dashboard' },
@@ -230,6 +255,7 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   productos: {
     title: 'Agregar Producto',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'productos-lista',
     breadcrumbs: [
         { label: 'SIIF', href: '/dashboard' },
@@ -255,6 +281,51 @@ export const configMap: Record<string, CrudConfig> = {
       { name: 'presentacion', label: 'Presententación', type: 'text', class: 'md:col-span-1' },
       { name: 'descuento', label: 'Descuento', type: 'text', class: 'md:col-span-1' },
       { name: 'lote', label: 'Lote', type: 'text', class: 'md:col-span-1' },
+    ]
+  },
+
+  // ------------------------------------------------
+  // LINEA-PRODUCTOS 
+  // ------------------------------------------------
+
+  lineas_productos: {
+    title: 'Líneas de Productos',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
+    routePrefix: 'lineas',
+    breadcrumbs: [
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Productos', href: '/productos' },
+      { label: 'Líneas de Productos' }
+    ],
+    columns: [
+      { key: 'id', label: 'ID' },
+      { key: 'descripcion_linea_producto', label: 'Descripción de la Línea' },
+    ],
+    fields: [
+      { name: 'id', label: 'ID', type: 'text', class: 'md:col-span-1' },
+      { name: 'descripcion_linea_producto', label: 'Descripción de la Línea', type: 'text', class: 'md:col-span-2' },
+    ]
+  },
+
+  // ------------------------------------------------
+  // TIPO-PRODUCTOS 
+  // ------------------------------------------------
+
+  tipos_productos: {
+    title: 'Tipos de Productos',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
+    routePrefix: 'tipos',
+    breadcrumbs: [
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Productos', href: '/productos' },
+      { label: 'Tipos de Productos' }
+    ],
+    columns: [
+      { key: 'idtipo_producto', label: 'Código ID' },
+      { key: 'descripcion_tipo_producto', label: 'Descripción' },
+    ],
+    fields: [
+      { name: 'descripcion_tipo_producto', label: 'Descripción del Tipo', type: 'text', class: 'md:col-span-3' },
     ]
   }
 }
