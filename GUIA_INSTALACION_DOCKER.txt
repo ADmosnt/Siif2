@@ -1,0 +1,623 @@
+================================================================================
+     GUIA COMPLETA: COMO CORRER SIIF2 CON DOCKER EN WINDOWS 11
+     (Paso a paso - MariaDB + DBeaver + Laravel)
+================================================================================
+
+Estimado usuario, esta guia le explicara paso a paso como:
+
+  1. Instalar Docker en Windows 11
+  2. Descargar y correr el proyecto SIIF2
+  3. Migrar/cargar la base de datos en MariaDB
+  4. Instalar DBeaver y conectarse a la base de datos
+  5. Ejecutar comandos de Laravel (php artisan migrate, etc.)
+
+Tome su tiempo, siga cada paso en orden, y no se salte ninguno.
+
+
+================================================================================
+PARTE 1: INSTALAR DOCKER DESKTOP EN WINDOWS 11
+================================================================================
+
+Docker es un programa que crea "contenedores" (como pequenas computadoras
+virtuales) donde correra nuestro proyecto. No necesita instalar PHP, MySQL
+ni nada mas por separado. Docker se encarga de todo.
+
+PASO 1.1 - Descargar Docker Desktop
+----------------------------------------------------------------------
+  a) Abra su navegador (Chrome, Edge, etc.)
+  b) Vaya a esta direccion: https://www.docker.com/products/docker-desktop/
+  c) Haga clic en el boton azul "Download for Windows"
+  d) Se descargara un archivo llamado "Docker Desktop Installer.exe"
+  e) Espere a que termine la descarga
+
+PASO 1.2 - Instalar Docker Desktop
+----------------------------------------------------------------------
+  a) Vaya a su carpeta de Descargas
+  b) Haga doble clic en "Docker Desktop Installer.exe"
+  c) Si Windows le pregunta "Desea permitir que esta aplicacion haga
+     cambios en su dispositivo?", haga clic en "Si"
+  d) En la ventana de instalacion:
+     - Asegurese de que la casilla "Use WSL 2 instead of Hyper-V"
+       este MARCADA (con una palomita/check)
+     - Haga clic en "Ok"
+  e) Espere a que termine la instalacion (puede tardar 5-10 minutos)
+  f) Cuando termine, haga clic en "Close and restart"
+     (Esto REINICIARA su computadora)
+
+PASO 1.3 - Configurar Docker Desktop despues del reinicio
+----------------------------------------------------------------------
+  a) Despues de reiniciar, Docker Desktop se abrira automaticamente
+     (Si no se abre, busquelo en el menu Inicio: "Docker Desktop")
+  b) Le pedira aceptar los terminos de servicio. Haga clic en "Accept"
+  c) Puede saltarse el registro (Skip / Continue without signing in)
+  d) Espere a que Docker termine de iniciarse
+     - Vera un icono de una ballena en la barra de tareas (abajo a
+       la derecha, cerca del reloj)
+     - Cuando la ballena deje de moverse, Docker esta listo
+  e) Para verificar que funciona:
+     - Abra "PowerShell" (busquelo en el menu Inicio)
+     - Escriba este comando y presione Enter:
+
+         docker --version
+
+     - Deberia ver algo como: "Docker version 27.x.x"
+     - Si ve eso, Docker esta instalado correctamente
+
+
+================================================================================
+PARTE 2: DESCARGAR EL PROYECTO SIIF2
+================================================================================
+
+PASO 2.1 - Instalar Git (si no lo tiene)
+----------------------------------------------------------------------
+  a) Vaya a: https://git-scm.com/downloads/win
+  b) Descargue el instalador para Windows (64-bit)
+  c) Ejecute el instalador
+  d) Acepte todas las opciones por defecto (solo haga clic en "Next"
+     en cada pantalla hasta que termine)
+
+PASO 2.2 - Descargar el proyecto
+----------------------------------------------------------------------
+  a) Abra PowerShell (busquelo en el menu Inicio)
+  b) Navegue a donde quiere guardar el proyecto. Por ejemplo,
+     para guardarlo en el Escritorio, escriba:
+
+         cd ~/Desktop
+
+  c) Descargue el proyecto con este comando:
+
+         git clone https://github.com/ADmosnt/Siif2.git
+
+  d) Entre a la carpeta del proyecto:
+
+         cd Siif2
+
+
+================================================================================
+PARTE 3: CONFIGURAR EL ARCHIVO .env
+================================================================================
+
+El archivo .env es como la "tarjeta de configuracion" del proyecto.
+Le dice al programa donde esta la base de datos, que contrasenas usar, etc.
+
+PASO 3.1 - Crear el archivo .env
+----------------------------------------------------------------------
+  a) Dentro de la carpeta Siif2 en PowerShell, ejecute:
+
+         copy .env.example_with_docker_mariadb .env
+
+     Esto crea una copia del archivo de ejemplo con el nombre correcto.
+
+PASO 3.2 - (OPCIONAL) Verificar el contenido
+----------------------------------------------------------------------
+  Si desea ver o editar el archivo, puede abrirlo con el Bloc de Notas:
+
+         notepad .env
+
+  Los valores importantes que ya vienen configurados son:
+
+      DB_CONNECTION=mysql
+      DB_HOST=db
+      DB_PORT=3306
+      DB_DATABASE=appserviciosinte_siif
+      DB_USERNAME=laravel_user
+      DB_PASSWORD=0690164
+      APP_URL=http://localhost:8080
+
+  IMPORTANTE: No cambie DB_HOST=db  (ese "db" es el nombre interno
+  que Docker usa para comunicarse con la base de datos)
+
+
+================================================================================
+PARTE 4: LEVANTAR EL PROYECTO CON DOCKER
+================================================================================
+
+Ahora viene la parte mas importante: encender todo el sistema.
+Docker va a crear 4 "contenedores" (maquinas virtuales pequenas):
+
+  - "app"    = El servidor PHP/Laravel (el cerebro del sistema)
+  - "node"   = El compilador de Vue/JavaScript (la cara del sistema)
+  - "nginx"  = El servidor web (el que recibe las visitas)
+  - "db"     = La base de datos MariaDB (donde se guardan los datos)
+
+PASO 4.1 - Construir y levantar los contenedores
+----------------------------------------------------------------------
+  a) Asegurese de que Docker Desktop este corriendo (la ballena
+     en la barra de tareas debe estar quieta, no moviendose)
+
+  b) En PowerShell, dentro de la carpeta Siif2, ejecute:
+
+         docker compose up --build -d
+
+     Explicacion del comando:
+       docker compose up  = "enciende todo el sistema"
+       --build            = "construye las imagenes desde cero"
+       -d                 = "en segundo plano" (para que no ocupe
+                            la ventana de PowerShell)
+
+  c) LA PRIMERA VEZ tardara entre 5 y 15 minutos porque tiene que:
+     - Descargar PHP, Node.js, Nginx y MariaDB de internet
+     - Instalar todas las librerias del proyecto
+     - Crear la base de datos
+
+     Vera muchas lineas de texto pasando en la pantalla.
+     Esto es NORMAL. Espere pacientemente.
+
+  d) Cuando termine, vera algo como:
+       [+] Running 4/4
+        - Container laravel-db     Started
+        - Container vue-build      Started
+        - Container siif2-app-1    Started
+        - Container laravel-nginx  Started
+
+PASO 4.2 - Verificar que todo esta corriendo
+----------------------------------------------------------------------
+  Ejecute este comando para ver el estado de los contenedores:
+
+         docker compose ps
+
+  Deberia ver 4 contenedores con el estado "Up" o "running":
+
+      NAME              STATUS
+      laravel-db        Up (healthy)
+      vue-build         Up
+      siif2-app-1       Up
+      laravel-nginx     Up
+
+  Si algun contenedor dice "Restarting" o "Exit", espere 30 segundos
+  y ejecute el comando otra vez. A veces la base de datos tarda un
+  poco en estar lista.
+
+PASO 4.3 - Ver los logs (si algo no funciona)
+----------------------------------------------------------------------
+  Si necesita ver que esta pasando dentro de los contenedores:
+
+  - Ver TODO lo que pasa:
+
+         docker compose logs
+
+  - Ver solo lo de la base de datos:
+
+         docker compose logs db
+
+  - Ver solo lo del servidor PHP:
+
+         docker compose logs app
+
+  - Ver los logs EN VIVO (se actualizan en tiempo real):
+
+         docker compose logs -f
+
+    (Para dejar de ver los logs en vivo, presione Ctrl + C)
+
+PASO 4.4 - Abrir el sistema en el navegador
+----------------------------------------------------------------------
+  a) Abra su navegador (Chrome, Edge, etc.)
+  b) Escriba en la barra de direcciones:
+
+         http://localhost:8080
+
+  c) Deberia ver la pagina de inicio de sesion de SIIF2
+
+  NOTA: Si ve una pagina en blanco o un error, espere 1-2 minutos
+  mas y recargue la pagina (F5). El servidor de Vue (Vite) puede
+  tardar un poco en compilar todo la primera vez.
+
+
+================================================================================
+PARTE 5: LA BASE DE DATOS - COMO FUNCIONA
+================================================================================
+
+El proyecto ya incluye un archivo SQL que carga automaticamente los datos
+iniciales cuando Docker crea la base de datos por primera vez.
+
+Este archivo esta en:
+    Siif2/docker-entrypoint-initdb.d/01_dump_patched.sql
+
+Docker/MariaDB lo ejecuta AUTOMATICAMENTE la primera vez que se crea
+el contenedor de base de datos. Usted NO necesita hacer nada extra.
+
+PASO 5.1 - Ejecutar migraciones de Laravel (IMPORTANTE)
+----------------------------------------------------------------------
+  Las migraciones son archivos que crean o modifican las tablas de la
+  base de datos. Se ejecutan con "php artisan migrate".
+
+  Como el PHP esta DENTRO de Docker (no en su computadora), el comando
+  se ejecuta asi:
+
+         docker compose exec app php artisan migrate --force
+
+  Explicacion:
+    docker compose exec app  = "ejecuta un comando dentro del
+                                contenedor llamado 'app'"
+    php artisan migrate      = "crea/actualiza las tablas"
+    --force                  = "hacerlo sin preguntar confirmacion"
+
+  NOTA: El script de inicio (init.sh) ya ejecuta las migraciones
+  automaticamente al encender el contenedor. Solo necesita este
+  comando si agrega nuevas migraciones despues.
+
+PASO 5.2 - Otros comandos utiles de Laravel con Docker
+----------------------------------------------------------------------
+
+  * Limpiar toda la cache:
+
+         docker compose exec app php artisan optimize:clear
+
+  * Ver las rutas del sistema:
+
+         docker compose exec app php artisan route:list
+
+  * Crear un nuevo archivo de migracion:
+
+         docker compose exec app php artisan make:migration nombre_de_la_migracion
+
+  * Deshacer la ultima migracion:
+
+         docker compose exec app php artisan migrate:rollback
+
+  * Rehacer TODAS las migraciones (CUIDADO: borra todos los datos):
+
+         docker compose exec app php artisan migrate:fresh
+
+  * Entrar al contenedor PHP directamente (como si fuera otra
+    computadora, para ejecutar multiples comandos):
+
+         docker compose exec app bash
+
+    Una vez dentro, puede ejecutar comandos directamente:
+         php artisan migrate
+         php artisan tinker
+         composer install
+
+    Para salir del contenedor, escriba:
+         exit
+
+
+================================================================================
+PARTE 6: INSTALAR DBEAVER Y CONECTARSE A MARIADB
+================================================================================
+
+DBeaver es un programa gratuito para ver y manejar bases de datos.
+Es como un "Excel para bases de datos": le permite ver las tablas,
+los datos, ejecutar consultas SQL, etc.
+
+PASO 6.1 - Descargar DBeaver
+----------------------------------------------------------------------
+  a) Vaya a: https://dbeaver.io/download/
+  b) En la seccion "Community Edition" (la version gratuita),
+     haga clic en "Windows (installer)"
+  c) Descargue el archivo .exe
+
+PASO 6.2 - Instalar DBeaver
+----------------------------------------------------------------------
+  a) Ejecute el archivo descargado
+  b) Si Windows pregunta por permisos, haga clic en "Si"
+  c) Siga el instalador:
+     - Idioma: Espanol (o el que prefiera)
+     - Aceptar la licencia
+     - Dejar las opciones por defecto
+     - Haga clic en "Siguiente" en cada pantalla
+     - Al final, haga clic en "Instalar"
+  d) Cuando termine, haga clic en "Finalizar"
+
+PASO 6.3 - Crear la conexion a MariaDB
+----------------------------------------------------------------------
+  a) Abra DBeaver (busquelo en el menu Inicio)
+
+  b) Haga clic en el icono del enchufe con el signo "+" en la
+     esquina superior izquierda (tooltip: "Nueva conexion")
+     O bien vaya al menu: Base de datos > Nueva conexion
+
+  c) En la ventana que aparece, busque y seleccione "MariaDB"
+     (tiene un icono de un delfin azul/marron)
+     Haga clic en "Siguiente"
+
+  d) En la pantalla de configuracion, llene estos datos EXACTAMENTE:
+
+     +--------------------------+------------------------------+
+     | Campo                    | Valor                        |
+     +--------------------------+------------------------------+
+     | Server Host              | localhost                    |
+     | Port                     | 3309                         |
+     | Database                 | appserviciosinte_siif        |
+     | Username                 | laravel_user                 |
+     | Password                 | 0690164                      |
+     +--------------------------+------------------------------+
+
+     ATENCION CON EL PUERTO: es 3309, NO 3306
+     (Docker redirige el puerto 3306 interno al 3309 externo
+      para no chocar con algun MySQL que tenga instalado)
+
+  e) Haga clic en "Test Connection..." (boton en la esquina inferior
+     izquierda de la ventana)
+
+     - Si es la primera vez, DBeaver le pedira descargar el "driver"
+       de MariaDB. Haga clic en "Download" o "Descargar". Esto es
+       normal y solo pasa una vez.
+
+     - Si todo esta bien, vera un mensaje verde:
+       "Connected" o "Conexion exitosa"
+
+     - Si ve un error:
+       * Verifique que Docker este corriendo (la ballena en la
+         barra de tareas)
+       * Verifique que los contenedores esten encendidos:
+         Abra PowerShell y ejecute: docker compose ps
+       * Verifique que escribio el puerto 3309 (no 3306)
+       * Verifique que la contrasena sea correcta: 0690164
+
+  f) Haga clic en "Finalizar" para guardar la conexion
+
+PASO 6.4 - Explorar la base de datos
+----------------------------------------------------------------------
+  a) En el panel izquierdo de DBeaver, vera la nueva conexion
+  b) Haga doble clic en ella para conectarse
+  c) Se desplegaran las carpetas:
+     - appserviciosinte_siif
+       - Tablas
+         - cache
+         - failed_jobs
+         - migrations
+         - sessions
+         - t_actividades
+         - t_bitacoras
+         - t_ciclos
+         - t_ciudades
+         - t_clases
+         - ... (muchas mas tablas)
+
+  d) Para ver los datos de una tabla:
+     - Haga doble clic en el nombre de la tabla (ej: "t_personas")
+     - Se abrira una pestana con los datos en formato de tabla
+     - Puede hacer scroll para ver todos los registros
+
+  e) Para ejecutar una consulta SQL:
+     - Haga clic derecho en la conexion > "SQL Editor" > "Nuevo script SQL"
+     - Escriba su consulta, por ejemplo:
+
+         SELECT * FROM t_personas LIMIT 10;
+
+     - Presione Ctrl + Enter para ejecutarla
+     - Los resultados apareceran abajo
+
+
+================================================================================
+PARTE 7: MIGRAR DATOS DESDE MYSQL EXISTENTE A MARIADB (DOCKER)
+================================================================================
+
+Si ya tiene una base de datos MySQL con datos que quiere pasar al
+nuevo sistema con Docker/MariaDB, siga estos pasos:
+
+PASO 7.1 - Exportar los datos de MySQL
+----------------------------------------------------------------------
+  a) Si tiene acceso a phpMyAdmin (panel web de MySQL):
+     - Abra phpMyAdmin
+     - Seleccione la base de datos
+     - Haga clic en "Exportar"
+     - Metodo: "Rapido" o "Quick"
+     - Formato: SQL
+     - Haga clic en "Continuar"
+     - Se descargara un archivo .sql
+
+  b) Si tiene acceso por linea de comandos:
+     En CMD o PowerShell, ejecute:
+
+         mysqldump -u usuario -p nombre_base_datos > backup.sql
+
+     Le pedira la contrasena. Escribala y presione Enter.
+     Se creara el archivo "backup.sql"
+
+PASO 7.2 - Importar los datos en MariaDB (Docker)
+----------------------------------------------------------------------
+  a) Copie el archivo .sql a la carpeta del proyecto Siif2
+
+  b) En PowerShell, dentro de la carpeta Siif2, ejecute:
+
+         docker compose exec -T db mariadb -ularavel_user -p0690164 appserviciosinte_siif < backup.sql
+
+     Explicacion:
+       docker compose exec -T db  = ejecuta dentro del contenedor de BD
+       mariadb                    = el programa cliente de MariaDB
+       -ularavel_user             = el usuario
+       -p0690164                  = la contrasena
+       appserviciosinte_siif      = nombre de la base de datos
+       < backup.sql               = "lee el archivo y lo importa"
+
+  c) Espere a que termine. Puede tardar varios minutos si la base
+     de datos es grande.
+
+  d) Verifique en DBeaver que los datos se importaron correctamente.
+
+NOTA IMPORTANTE SOBRE COMPATIBILIDAD:
+  MariaDB es 99.9% compatible con MySQL. Los archivos .sql exportados
+  desde MySQL funcionan directamente en MariaDB sin modificaciones.
+  Son como "primos hermanos": hablan casi el mismo idioma.
+
+
+================================================================================
+PARTE 8: COMANDOS DE USO DIARIO
+================================================================================
+
+Estos son los comandos que usara con frecuencia. Todos se ejecutan
+en PowerShell, dentro de la carpeta del proyecto Siif2.
+
+  ENCENDER el sistema (cuando prenda la computadora):
+  ---------------------------------------------------
+         docker compose up -d
+
+  APAGAR el sistema (cuando termine de trabajar):
+  ---------------------------------------------------
+         docker compose down
+
+  REINICIAR todo el sistema:
+  ---------------------------------------------------
+         docker compose restart
+
+  Ver si esta corriendo:
+  ---------------------------------------------------
+         docker compose ps
+
+  Reconstruir todo desde cero (si algo se dano):
+  ---------------------------------------------------
+         docker compose down
+         docker compose up --build -d
+
+  Borrar TODO y empezar de cero (CUIDADO: borra la base de datos):
+  ---------------------------------------------------
+         docker compose down -v
+         docker compose up --build -d
+
+     La opcion -v borra los "volumenes" (donde se guardan los datos
+     de la base de datos). Solo use esto si realmente quiere empezar
+     de cero con la base de datos limpia.
+
+
+================================================================================
+PARTE 9: PROBLEMAS COMUNES Y SOLUCIONES
+================================================================================
+
+PROBLEMA: "Docker Desktop requiere WSL 2"
+----------------------------------------------------------------------
+  Solucion:
+  a) Abra PowerShell COMO ADMINISTRADOR
+     (clic derecho en PowerShell > "Ejecutar como administrador")
+  b) Ejecute:
+         wsl --install
+  c) Reinicie la computadora
+  d) Abra Docker Desktop otra vez
+
+PROBLEMA: "puerto 3309 ya esta en uso"
+----------------------------------------------------------------------
+  Otro programa esta usando ese puerto.
+  Solucion:
+  a) Abra el archivo docker-compose.yml con el Bloc de Notas
+  b) Busque la linea:    - "3309:3306"
+  c) Cambie 3309 por otro numero, ejemplo:    - "3310:3306"
+  d) Guarde el archivo
+  e) Recuerde usar el nuevo puerto (3310) en DBeaver tambien
+  f) Ejecute: docker compose up -d
+
+PROBLEMA: "La pagina no carga en localhost:8080"
+----------------------------------------------------------------------
+  a) Verifique que los contenedores estan corriendo:
+         docker compose ps
+  b) Si algun contenedor dice "Restarting", vea los logs:
+         docker compose logs app
+         docker compose logs node
+  c) Si ve errores de permisos, ejecute:
+         docker compose down
+         docker compose up --build -d
+
+PROBLEMA: "Error de conexion a la base de datos"
+----------------------------------------------------------------------
+  a) Verifique que el contenedor de BD esta corriendo:
+         docker compose ps
+  b) Vea los logs de la base de datos:
+         docker compose logs db
+  c) Si la BD esta "healthy" pero Laravel no conecta, entre al
+     contenedor y verifique:
+         docker compose exec app php artisan tinker
+     Luego escriba:
+         DB::connection()->getPdo();
+     Si conecta, vera informacion del PDO.
+     Si no, vera un mensaje de error con detalles.
+
+PROBLEMA: "Los cambios en el codigo no se reflejan"
+----------------------------------------------------------------------
+  a) Para cambios en archivos Vue/JS (frontend):
+     Vite deberia recargar automaticamente. Si no lo hace:
+         docker compose restart node
+
+  b) Para cambios en archivos PHP (backend):
+         docker compose exec app php artisan optimize:clear
+
+PROBLEMA: DBeaver dice "Connection refused" o "Conexion rechazada"
+----------------------------------------------------------------------
+  a) Asegurese de que Docker esta corriendo
+  b) Asegurese de que el puerto es 3309 (no 3306)
+  c) Asegurese de que el host es "localhost" (no "127.0.0.1")
+     Si localhost no funciona, intente con 127.0.0.1
+  d) Ejecute en PowerShell:
+         docker compose ps
+     Y verifique que "laravel-db" dice "Up (healthy)"
+
+
+================================================================================
+PARTE 10: RESUMEN DE PUERTOS
+================================================================================
+
+  +---------------------+--------+------------------------------------------+
+  | Servicio            | Puerto | Para que sirve                           |
+  +---------------------+--------+------------------------------------------+
+  | Pagina web (SIIF2)  | 8080   | Abrir en el navegador: localhost:8080    |
+  | Vite (desarrollo)   | 5173   | Compilador de Vue (automatico)           |
+  | MariaDB (base datos)| 3309   | Conectar desde DBeaver: localhost:3309   |
+  +---------------------+--------+------------------------------------------+
+
+  Recuerde: estos puertos solo funcionan en SU computadora.
+  Nadie externo puede acceder a ellos.
+
+
+================================================================================
+PARTE 11: ESTRUCTURA DEL PROYECTO (REFERENCIA)
+================================================================================
+
+  Siif2/
+  |
+  |-- .docker/                  <-- Configuracion de Docker
+  |   |-- php/Dockerfile        <-- Receta para el contenedor PHP
+  |   |-- php/init.sh           <-- Script que inicia Laravel
+  |   |-- node/Dockerfile       <-- Receta para el contenedor Node
+  |   |-- nginx/default.conf    <-- Configuracion del servidor web
+  |
+  |-- docker-compose.yml        <-- Archivo principal de Docker
+  |                                  (define los 4 contenedores)
+  |
+  |-- docker-entrypoint-initdb.d/
+  |   |-- 01_dump_patched.sql   <-- Datos iniciales de la BD
+  |                                  (se carga automaticamente)
+  |
+  |-- .env                      <-- Configuracion del proyecto
+  |                                  (contrasenas, puertos, etc.)
+  |
+  |-- app/                      <-- Codigo PHP/Laravel (backend)
+  |-- resources/js/             <-- Codigo Vue/TypeScript (frontend)
+  |-- routes/web.php            <-- Las rutas/URLs del sistema
+  |-- database/migrations/      <-- Archivos de migracion de BD
+
+
+================================================================================
+FIN DE LA GUIA
+================================================================================
+
+Si tiene dudas, recuerde:
+  - Docker Desktop tiene que estar ABIERTO (la ballena en la barra
+    de tareas) para que todo funcione
+  - Use PowerShell para ejecutar los comandos
+  - Siempre ejecute los comandos DENTRO de la carpeta Siif2
+  - Si algo no funciona, el primer paso siempre es:
+        docker compose ps
+    para ver si los contenedores estan corriendo
+
+================================================================================
