@@ -1,0 +1,803 @@
+================================================================================
+   ANALISIS Y PLAN DE IMPLEMENTACION: MODO OFFLINE PARA PWA SIIF2
+   Modulo de Cola de Sincronizacion para RFV (Vendedores en Campo)
+================================================================================
+
+Fecha: Mayo 2026
+Proyecto: SIIF2 - Sistema Integral de Informacion y Fuerza de Ventas
+Objetivo: Permitir que los RFV (Representantes Fuerza de Venta) sigan
+          trabajando sin conexion a internet, acumulando operaciones
+          en una cola local que se sincroniza al recuperar la conexion.
+
+
+================================================================================
+PARTE 1: DIAGNOSTICO ACTUAL
+================================================================================
+
+1.1 - QUE TIENE LA PWA HOY
+----------------------------------------------------------------------
+  - Manifest.json configurado (standalone, iconos, nombre)
+  - Service Worker (sw.js) que SOLO maneja push notifications
+  - OfflineBanner.vue que muestra un banner rojo cuando no hay internet
+  - VitePWA plugin configurado en vite.config.ts con Workbox
+  - NO hay cache de assets para navegacion offline
+  - NO hay almacenamiento local de datos
+  - NO hay cola de sincronizacion
+
+  En resumen: si el RFV pierde internet, ve un banner rojo y
+  no puede hacer absolutamente nada.
+
+
+1.2 - QUE NECESITAN LOS RFV (OPERACIONES CRITICAS)
+----------------------------------------------------------------------
+  Los vendedores en campo hacen 3 cosas fundamentales:
+
+  A) TOMAR PEDIDOS (TDP - Toma de Pedidos)
+     - Seleccionar cliente, representante, mayoristas
+     - Agregar productos con cantidades
+     - Enviar la orden al servidor
+     - Endpoint: POST /toma-de-pedidos
+     - Datos necesarios: catalogo de productos, lista de clientes,
+       lista de mayoristas
+
+  B) REGISTRAR ACTIVIDADES (RTR - Reporte en Tiempo Real)
+     - Seleccionar cliente, tipo de actividad, tipo de incidente
+     - Opcionalmente agregar muestras medicas entregadas
+     - Enviar el reporte al servidor
+     - Endpoint: POST /reportes/nuevo
+     - Datos necesarios: tipos de actividad, tipos de incidente,
+       catalogo de productos/muestras, lista de clientes
+
+  C) CONSULTAR AGENDA DE CLIENTES
+     - Ver lista de clientes asignados
+     - Ver frecuencia de visitas y estadisticas
+     - Esto es solo lectura (no genera datos nuevos)
+
+
+1.3 - DATOS QUE SE NECESITAN DISPONIBLES OFFLINE
+----------------------------------------------------------------------
+  Para que los formularios funcionen sin internet, el RFV necesita
+  tener descargados previamente en su dispositivo:
+
+  +------------------------------+------------------+------------------+
+  | Dato                         | Tamano estimado  | Cambia frecuente |
+  +------------------------------+------------------+------------------+
+  | Lista de clientes asignados  | 50-500 registros | Semanal          |
+  | Catalogo de productos        | 100-1000 reg.    | Mensual          |
+  | Lista de mayoristas          | 10-50 registros  | Raro             |
+  | Tipos de actividad           | 5-15 registros   | Casi nunca       |
+  | Tipos de incidente           | 5-15 registros   | Casi nunca       |
+  | Catalogo de muestras         | 50-200 registros | Mensual          |
+  | Visitas programadas del mes  | 20-100 registros | Diario           |
+  +------------------------------+------------------+------------------+
+
+  Total estimado: < 2 MB de datos. Perfectamente almacenable
+  en el navegador.
+
+
+================================================================================
+PARTE 2: ARQUITECTURA PROPUESTA
+================================================================================
+
+2.1 - TECNOLOGIA: POR QUE IndexedDB Y NO SQLite
+----------------------------------------------------------------------
+  Se menciono SQLite como opcion, pero para este caso IndexedDB
+  es la mejor eleccion:
+
+  SQLite (via sql.js o wa-sqlite):
+    - Requiere cargar un archivo WASM de ~1MB
+    - Mas complejo de implementar en un Service Worker
+    - Mejor para consultas SQL complejas (no las necesitamos)
+    - Problemas de compatibilidad con algunos navegadores moviles
+
+  IndexedDB (nativo del navegador):
+    + Ya viene incluido en TODOS los navegadores modernos
+    + Funciona perfectamente en Service Workers
+    + No requiere librerias adicionales pesadas
+    + Soporta indices, transacciones y busquedas
+    + Almacenamiento de hasta 50-100 MB por origen
+    + Compatible con la Background Sync API
+
+  Libreria recomendada: Dexie.js (~45KB)
+    - Wrapper moderno sobre IndexedDB
+    - API basada en Promesas (async/await)
+    - Soporte para TypeScript
+    - Migraciones de esquema integradas
+    - Muy popular y bien mantenida
+
+  DECISION: IndexedDB con Dexie.js
+
+
+2.2 - DIAGRAMA DE ARQUITECTURA
+----------------------------------------------------------------------
+
+  +--------------------------------------------------------------------+
+  |                        DISPOSITIVO DEL RFV                         |
+  |                                                                    |
+  |  +---------------------+    +----------------------------------+   |
+  |  |   Vue App (UI)      |    |   Service Worker                 |   |
+  |  |                     |    |                                  |   |
+  |  |  TomaDePedidos.vue  |    |  - Cache de assets (HTML/JS/CSS) |   |
+  |  |  NuevoReporte.vue   |    |  - Intercepta fetch() fallidos   |   |
+  |  |  ListaClientes.vue  |    |  - Background Sync               |   |
+  |  |                     |    |  - Push notifications             |   |
+  |  +--------+------------+    +------------------+---------------+   |
+  |           |                                    |                   |
+  |           v                                    v                   |
+  |  +-----------------------------------------------------+          |
+  |  |              Capa de Datos Offline                   |          |
+  |  |                                                      |          |
+  |  |  offlineStore.ts (Pinia)                             |          |
+  |  |    - Estado reactivo de online/offline               |          |
+  |  |    - Cola de operaciones pendientes                  |          |
+  |  |    - Contador de pendientes (badge)                  |          |
+  |  |                                                      |          |
+  |  |  offlineDb.ts (Dexie.js / IndexedDB)                 |          |
+  |  |    - Tabla: clientes (cache de datos maestros)       |          |
+  |  |    - Tabla: productos (cache de catalogo)            |          |
+  |  |    - Tabla: mayoristas (cache)                       |          |
+  |  |    - Tabla: actividades_tipos (cache)                |          |
+  |  |    - Tabla: incidentes_tipos (cache)                 |          |
+  |  |    - Tabla: sync_queue (cola de pendientes)          |          |
+  |  |    - Tabla: sync_log (historial de sincronizacion)   |          |
+  |  |                                                      |          |
+  |  |  syncService.ts                                      |          |
+  |  |    - Descarga datos maestros del servidor            |          |
+  |  |    - Envia operaciones pendientes cuando hay red     |          |
+  |  |    - Manejo de conflictos y reintentos               |          |
+  |  +-----------------------------------------------------+          |
+  |                                                                    |
+  +--------------------------------------------------------------------+
+                              |
+                              | Internet (cuando hay)
+                              v
+                    +-------------------+
+                    |   Servidor SIIF2  |
+                    |   (Laravel API)   |
+                    +-------------------+
+
+
+2.3 - FLUJO DE OPERACION
+----------------------------------------------------------------------
+
+  ESCENARIO: RFV CON INTERNET (FLUJO NORMAL)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  1. RFV abre la app -> datos se cargan del servidor (como hoy)
+  2. Al cargar, se guardan TAMBIEN en IndexedDB (cache local)
+  3. RFV crea un pedido -> se envia al servidor directamente
+  4. Respuesta exitosa -> se muestra confirmacion
+
+  ESCENARIO: RFV PIERDE INTERNET MIENTRAS TRABAJA
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  1. RFV abre formulario de pedido
+  2. Los datos (clientes, productos) se cargan desde IndexedDB
+  3. RFV llena el formulario y presiona "Enviar"
+  4. El sistema detecta que no hay internet
+  5. El pedido se guarda en la tabla "sync_queue" de IndexedDB
+  6. Se muestra: "Pedido guardado. Se enviara cuando haya conexion"
+  7. Un badge muestra "(3 pendientes)" en la barra
+
+  ESCENARIO: RFV RECUPERA INTERNET
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  1. El navegador detecta que hay conexion (evento 'online')
+  2. Se dispara el proceso de sincronizacion automaticamente
+  3. Se procesan las operaciones pendientes en orden (FIFO)
+  4. Por cada operacion exitosa:
+     - Se elimina de sync_queue
+     - Se registra en sync_log
+  5. Se muestra: "3 operaciones sincronizadas correctamente"
+  6. Si alguna falla, se marca como error y se reintenta despues
+
+
+================================================================================
+PARTE 3: ESQUEMA DE BASE DE DATOS LOCAL (IndexedDB)
+================================================================================
+
+3.1 - TABLAS DE CACHE (DATOS MAESTROS)
+----------------------------------------------------------------------
+  Estos datos se descargan del servidor y se guardan localmente
+  para que los formularios funcionen sin internet.
+
+  TABLA: cached_clientes
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | string   | idPersona (PK)                 |
+  | nombre             | string   | nombre_completo                |
+  | documento          | string   | documento_identidad            |
+  | telefono           | string   | telefono_persona               |
+  | direccion          | string   | direccion_domicilio            |
+  | email              | string   | email                          |
+  | ranking            | string   | idranking                      |
+  | frecuencia         | string   | idfrecuencia                   |
+  | cached_at          | number   | timestamp de cuando se guardo  |
+  +--------------------+----------+--------------------------------+
+
+  TABLA: cached_productos
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | string   | idproducto (PK)                |
+  | codigo             | string   | codigo del producto            |
+  | nombre             | string   | nombre del producto            |
+  | precio             | number   | precio unitario                |
+  | existencia         | number   | cantidad disponible            |
+  | linea              | string   | linea del producto             |
+  | lote               | string   | lote                           |
+  | cached_at          | number   | timestamp                      |
+  +--------------------+----------+--------------------------------+
+
+  TABLA: cached_mayoristas
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | string   | codigo (PK)                    |
+  | nombre             | string   | nombre del mayorista           |
+  | cached_at          | number   | timestamp                      |
+  +--------------------+----------+--------------------------------+
+
+  TABLA: cached_actividades_tipos
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | string   | idtipo_actividad (PK)          |
+  | descripcion        | string   | descripcionActividad           |
+  | cached_at          | number   | timestamp                      |
+  +--------------------+----------+--------------------------------+
+
+  TABLA: cached_incidentes_tipos
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | number   | idtipo_incidentes (PK)         |
+  | descripcion        | string   | descripcionIncidente           |
+  | cached_at          | number   | timestamp                      |
+  +--------------------+----------+--------------------------------+
+
+  TABLA: cached_muestras
+  +--------------------+----------+--------------------------------+
+  | Campo              | Tipo     | Descripcion                    |
+  +--------------------+----------+--------------------------------+
+  | id                 | string   | idproducto (PK)                |
+  | codigo             | string   | codigo                         |
+  | nombre             | string   | nombre del producto            |
+  | lote               | string   | lote                           |
+  | existencia         | number   | unidades disponibles           |
+  | cached_at          | number   | timestamp                      |
+  +--------------------+----------+--------------------------------+
+
+
+3.2 - TABLA DE COLA DE SINCRONIZACION
+----------------------------------------------------------------------
+  Aqui se guardan las operaciones que el RFV hizo sin internet.
+
+  TABLA: sync_queue
+  +--------------------+----------+------------------------------------------+
+  | Campo              | Tipo     | Descripcion                              |
+  +--------------------+----------+------------------------------------------+
+  | id                 | auto++   | ID local auto-incrementado               |
+  | type               | string   | "order" | "report"                       |
+  | payload            | object   | Los datos completos de la operacion      |
+  |                    |          | (el mismo JSON que se enviaria al server) |
+  | status             | string   | "pending" | "sending" | "failed"         |
+  | created_at         | number   | timestamp de cuando se creo              |
+  | attempts           | number   | cantidad de intentos de envio            |
+  | last_attempt_at    | number   | timestamp del ultimo intento             |
+  | error_message      | string   | mensaje de error (si fallo)              |
+  | local_ref          | string   | referencia local para el usuario         |
+  |                    |          | (ej: "PED-2026-05-22-001")               |
+  +--------------------+----------+------------------------------------------+
+
+
+3.3 - TABLA DE HISTORIAL DE SINCRONIZACION
+----------------------------------------------------------------------
+  Para que el RFV vea que se envio exitosamente.
+
+  TABLA: sync_log
+  +--------------------+----------+------------------------------------------+
+  | Campo              | Tipo     | Descripcion                              |
+  +--------------------+----------+------------------------------------------+
+  | id                 | auto++   | ID auto-incrementado                     |
+  | type               | string   | "order" | "report"                       |
+  | local_ref          | string   | referencia local                         |
+  | server_id          | string   | ID asignado por el servidor              |
+  | synced_at          | number   | timestamp de cuando se sincronizo        |
+  | payload_summary    | string   | resumen legible (ej: "Pedido a Juan...") |
+  +--------------------+----------+------------------------------------------+
+
+
+================================================================================
+PARTE 4: ARCHIVOS A CREAR Y MODIFICAR
+================================================================================
+
+4.1 - ARCHIVOS NUEVOS A CREAR
+----------------------------------------------------------------------
+
+  resources/js/offline/
+  |
+  |-- db.ts                    Base de datos IndexedDB con Dexie.js
+  |                            Define el esquema, tablas e indices
+  |
+  |-- syncService.ts           Servicio principal de sincronizacion
+  |                            - downloadMasterData(): descarga datos del server
+  |                            - processQueue(): envia operaciones pendientes
+  |                            - addToQueue(): agrega operacion a la cola
+  |                            - getQueueCount(): cuenta pendientes
+  |
+  |-- cacheService.ts          Servicio de cache de datos maestros
+  |                            - cacheClientes(): guarda clientes en IDB
+  |                            - cacheProductos(): guarda productos en IDB
+  |                            - getClientes(): lee clientes de IDB
+  |                            - getProductos(): lee productos de IDB
+  |                            - isCacheStale(): verifica si el cache expiro
+  |
+  |-- composables/
+  |   |-- useOffline.ts        Composable para componentes Vue
+  |                            - isOnline: ref reactivo
+  |                            - pendingCount: ref reactivo
+  |                            - submitOrQueue(): enviar o encolar
+  |                            - syncNow(): forzar sincronizacion
+  |
+  |-- types.ts                 Interfaces TypeScript para offline
+
+  resources/js/stores/
+  |
+  |-- offlineStore.ts          Pinia store para estado offline
+  |                            - isOnline: boolean
+  |                            - pendingCount: number
+  |                            - lastSyncAt: Date | null
+  |                            - isSyncing: boolean
+  |                            - syncErrors: SyncError[]
+
+  resources/js/components/
+  |
+  |-- OfflineSync/
+  |   |-- SyncStatusBar.vue    Barra de estado: "3 pendientes | Sincronizar"
+  |   |-- SyncQueuePanel.vue   Panel para ver/gestionar cola de pendientes
+  |   |-- SyncBadge.vue        Badge numerico en el menu
+
+
+4.2 - ARCHIVOS EXISTENTES A MODIFICAR
+----------------------------------------------------------------------
+
+  public/sw.js
+    - Agregar: Precache de assets (HTML, JS, CSS) con Workbox
+    - Agregar: Cache de paginas para navegacion offline
+    - Agregar: Background Sync API para la cola
+
+  vite.config.ts
+    - Modificar: Configuracion de VitePWA/Workbox para precaching
+    - Agregar: generateSW o injectManifest para el service worker
+
+  resources/js/app.ts
+    - Agregar: Inicializacion del offlineStore
+    - Agregar: Listener de eventos online/offline
+    - Agregar: Auto-sync cuando vuelve la conexion
+
+  resources/js/pages/TomaDePedidos.vue
+    - Modificar: funcion procesarPedido() para que use submitOrQueue()
+    - Agregar: carga de datos desde cache si esta offline
+    - Agregar: indicador visual de "modo offline"
+
+  resources/js/pages/RTR/NuevoReporte.vue
+    - Modificar: funcion de envio para que use submitOrQueue()
+    - Agregar: carga de datos desde cache si esta offline
+
+  resources/js/components/OfflineBanner.vue
+    - Modificar: mostrar tambien el conteo de pendientes
+    - Agregar: boton "Sincronizar ahora" cuando vuelve la conexion
+
+  resources/js/layouts/AppLayout.vue
+    - Agregar: SyncBadge en la barra de navegacion
+
+4.3 - ENDPOINT NUEVO EN LARAVEL (BACKEND)
+----------------------------------------------------------------------
+
+  Endpoint para descargar datos maestros en una sola peticion:
+
+  GET /api/offline/master-data
+
+  Respuesta:
+  {
+    "clientes": [ ... ],       // Solo los del RFV autenticado
+    "productos": [ ... ],      // Catalogo completo del fabricante
+    "mayoristas": [ ... ],     // Mayoristas del fabricante
+    "actividades": [ ... ],    // Tipos de actividad
+    "incidentes": [ ... ],     // Tipos de incidente
+    "muestras": [ ... ],       // Catalogo de muestras
+    "visitas": [ ... ],        // Visitas programadas del mes
+    "timestamp": 1716393600    // Para saber cuando se descargo
+  }
+
+  Controlador: app/Http/Controllers/Api/OfflineController.php
+
+  Este endpoint se llama:
+  - Al iniciar sesion (primera carga)
+  - Cada vez que el RFV abre la app con internet
+  - Manualmente con un boton "Actualizar datos"
+
+
+================================================================================
+PARTE 5: LOGICA DE SINCRONIZACION (DETALLADA)
+================================================================================
+
+5.1 - FUNCION submitOrQueue() (EL CORAZON DEL SISTEMA)
+----------------------------------------------------------------------
+
+  Esta funcion reemplaza el envio directo al servidor.
+  Se usa en TomaDePedidos.vue y NuevoReporte.vue:
+
+  async function submitOrQueue(type, payload, endpoint) {
+    if (navigator.onLine) {
+      try {
+        // Intentar enviar normalmente al servidor
+        const response = await axios.post(endpoint, payload)
+        return { success: true, serverId: response.data.id }
+      } catch (error) {
+        if (isNetworkError(error)) {
+          // Parecia online pero fallo -> encolar
+          return await addToQueue(type, payload)
+        }
+        // Error de validacion u otro -> mostrar error normal
+        throw error
+      }
+    } else {
+      // Sin internet -> encolar directamente
+      return await addToQueue(type, payload)
+    }
+  }
+
+
+5.2 - FUNCION processQueue() (SINCRONIZACION AUTOMATICA)
+----------------------------------------------------------------------
+
+  Se ejecuta cuando:
+  - El navegador detecta evento 'online'
+  - El usuario presiona "Sincronizar ahora"
+  - El Background Sync del Service Worker se activa
+
+  async function processQueue() {
+    const pendientes = await db.sync_queue
+      .where('status').equals('pending')
+      .sortBy('created_at')
+
+    for (const item of pendientes) {
+      try {
+        // Marcar como "enviando"
+        await db.sync_queue.update(item.id, { status: 'sending' })
+
+        // Determinar endpoint segun el tipo
+        const endpoint = item.type === 'order'
+          ? '/toma-de-pedidos'
+          : '/reportes/nuevo'
+
+        // Enviar al servidor
+        const response = await axios.post(endpoint, item.payload)
+
+        // Exito: mover a sync_log y eliminar de la cola
+        await db.sync_log.add({
+          type: item.type,
+          local_ref: item.local_ref,
+          server_id: response.data.id,
+          synced_at: Date.now(),
+          payload_summary: generarResumen(item)
+        })
+
+        await db.sync_queue.delete(item.id)
+
+      } catch (error) {
+        // Fallo: incrementar intentos
+        await db.sync_queue.update(item.id, {
+          status: 'failed',
+          attempts: item.attempts + 1,
+          last_attempt_at: Date.now(),
+          error_message: error.message
+        })
+
+        // Si es error de red, dejar de intentar (no hay internet)
+        if (isNetworkError(error)) break
+
+        // Si es error de validacion (422), no reintentar
+        // (los datos son invalidos, el RFV debe corregirlos)
+      }
+    }
+  }
+
+
+5.3 - MANEJO DE CONFLICTOS Y CASOS ESPECIALES
+----------------------------------------------------------------------
+
+  PROBLEMA: Precios cambiaron mientras estaba offline
+  SOLUCION: El servidor ya recalcula precios desde la BD. Si el
+            precio cambio, el servidor usara el precio actualizado.
+            Se notifica al RFV: "Nota: algunos precios se ajustaron"
+
+  PROBLEMA: Cliente fue eliminado mientras estaba offline
+  SOLUCION: El servidor rechaza con 422. La operacion se marca como
+            "failed" con mensaje descriptivo. El RFV puede editarla
+            o eliminarla de la cola.
+
+  PROBLEMA: Producto sin stock suficiente
+  SOLUCION: Igual que arriba, el servidor valida y rechaza si no
+            hay stock. Se notifica al RFV.
+
+  PROBLEMA: Operaciones duplicadas (se envio pero la respuesta no llego)
+  SOLUCION: Cada operacion lleva un "local_ref" unico (timestamp + random).
+            El servidor puede verificar si ya existe una operacion
+            con ese local_ref y evitar duplicados.
+
+  PROBLEMA: RFV offline por muchos dias (cache muy viejo)
+  SOLUCION: Al volver online, PRIMERO se descargan datos maestros
+            actualizados, LUEGO se procesan los pendientes.
+            Si el cache tiene mas de 7 dias, se muestra advertencia.
+
+
+================================================================================
+PARTE 6: INTERFAZ DE USUARIO (CAMBIOS VISUALES)
+================================================================================
+
+6.1 - BANNER OFFLINE MEJORADO
+----------------------------------------------------------------------
+  Cuando no hay internet, en lugar del banner rojo actual:
+
+  +================================================================+
+  |  (!) Sin conexion | 3 operaciones pendientes | [Sincronizar]   |
+  +================================================================+
+
+  - El banner cambia a amarillo cuando hay pendientes pero hay red
+  - El boton "Sincronizar" aparece al recuperar conexion
+  - Se muestra progreso: "Sincronizando 2/5..."
+
+6.2 - INDICADOR EN FORMULARIOS
+----------------------------------------------------------------------
+  Cuando el RFV esta offline y llena un formulario:
+
+  - Los selects de cliente, producto, etc. cargan desde IndexedDB
+  - Se muestra un texto: "Modo offline - datos del [fecha]"
+  - El boton de enviar cambia de "Enviar Pedido" a "Guardar Pedido"
+  - Al guardar, se muestra: "Pedido guardado localmente (PED-001)"
+
+6.3 - PANEL DE PENDIENTES
+----------------------------------------------------------------------
+  Nueva seccion accesible desde el menu lateral o la barra superior:
+
+  +----------------------------------------------------------------+
+  |  Cola de Sincronizacion                    [Sincronizar Todo]  |
+  +----------------------------------------------------------------+
+  | # | Tipo    | Detalle              | Estado   | Fecha          |
+  +---+---------+----------------------+----------+----------------+
+  | 1 | Pedido  | Juan Perez - 5 prod. | Pendiente| 22/05 10:30   |
+  | 2 | Reporte | Maria Lopez - Visita | Pendiente| 22/05 11:15   |
+  | 3 | Pedido  | Carlos Ruiz - 3 prod.| Error    | 22/05 11:45   |
+  +----------------------------------------------------------------+
+
+  - El RFV puede ver cada operacion en detalle
+  - Puede eliminar operaciones que ya no quiere enviar
+  - Puede editar operaciones que fallaron por datos invalidos
+  - Puede reintentar operaciones fallidas individualmente
+
+
+================================================================================
+PARTE 7: PLAN DE IMPLEMENTACION (FASES)
+================================================================================
+
+7.1 - FASE 1: INFRAESTRUCTURA OFFLINE (2-3 dias)
+----------------------------------------------------------------------
+  Crear la base sin modificar las paginas existentes:
+
+  [ ] Instalar Dexie.js: npm install dexie
+  [ ] Crear resources/js/offline/db.ts (esquema IndexedDB)
+  [ ] Crear resources/js/offline/types.ts (interfaces)
+  [ ] Crear resources/js/stores/offlineStore.ts (Pinia)
+  [ ] Crear resources/js/offline/syncService.ts (logica de sync)
+  [ ] Crear resources/js/offline/cacheService.ts (cache de datos)
+  [ ] Crear resources/js/offline/composables/useOffline.ts
+
+7.2 - FASE 2: SERVICE WORKER Y CACHE DE ASSETS (1-2 dias)
+----------------------------------------------------------------------
+  Hacer que la app se pueda abrir sin internet:
+
+  [ ] Modificar vite.config.ts para precaching con Workbox
+  [ ] Reescribir sw.js para cachear HTML/JS/CSS/fuentes
+  [ ] Configurar estrategias de cache:
+      - Assets estaticos: CacheFirst (cachear y servir del cache)
+      - Paginas HTML: NetworkFirst (intentar red, fallback a cache)
+      - API calls: NetworkOnly (siempre al servidor)
+  [ ] Verificar que la app abre sin internet
+
+7.3 - FASE 3: ENDPOINT DE DATOS MAESTROS (1 dia)
+----------------------------------------------------------------------
+  Backend para descargar todo en una sola peticion:
+
+  [ ] Crear app/Http/Controllers/Api/OfflineController.php
+  [ ] Crear ruta GET /api/offline/master-data
+  [ ] Implementar la descarga selectiva por fabricante y RFV
+  [ ] Agregar header de cache y timestamp
+
+7.4 - FASE 4: INTEGRAR EN TOMA DE PEDIDOS (2-3 dias)
+----------------------------------------------------------------------
+  Modificar TomaDePedidos.vue para funcionar offline:
+
+  [ ] Detectar estado de conexion en el componente
+  [ ] Cargar productos/clientes/mayoristas desde IndexedDB si offline
+  [ ] Reemplazar router.post() por submitOrQueue()
+  [ ] Agregar indicador visual de "modo offline"
+  [ ] Cambiar texto del boton segun estado
+  [ ] Mostrar referencia local al guardar offline
+
+7.5 - FASE 5: INTEGRAR EN NUEVO REPORTE (2-3 dias)
+----------------------------------------------------------------------
+  Modificar NuevoReporte.vue para funcionar offline:
+
+  [ ] Mismos cambios que en TDP
+  [ ] Cargar actividades/incidentes/muestras desde IndexedDB
+  [ ] Manejar el caso especial de muestras (reduccion de inventario)
+
+7.6 - FASE 6: UI DE SINCRONIZACION (2-3 dias)
+----------------------------------------------------------------------
+  Componentes visuales para el RFV:
+
+  [ ] Crear SyncStatusBar.vue
+  [ ] Crear SyncQueuePanel.vue (pagina de pendientes)
+  [ ] Crear SyncBadge.vue (badge en el menu)
+  [ ] Modificar OfflineBanner.vue
+  [ ] Agregar ruta /sync-queue para el panel
+  [ ] Agregar entrada en el menu lateral
+
+7.7 - FASE 7: PRUEBAS Y AJUSTES (2-3 dias)
+----------------------------------------------------------------------
+  [ ] Probar flujo completo: online -> offline -> crear pedido ->
+      volver online -> sincronizar
+  [ ] Probar con multiples operaciones en cola
+  [ ] Probar manejo de errores (operaciones rechazadas)
+  [ ] Probar con cache antiguo (datos desactualizados)
+  [ ] Probar en dispositivo movil real (Android Chrome)
+  [ ] Verificar tamano de almacenamiento usado
+
+  TIEMPO TOTAL ESTIMADO: 12-18 dias de desarrollo
+
+
+================================================================================
+PARTE 8: CONSIDERACIONES TECNICAS IMPORTANTES
+================================================================================
+
+8.1 - SEGURIDAD
+----------------------------------------------------------------------
+  - El token de autenticacion (cookie de sesion) debe estar activo
+    para que la sincronizacion funcione. Si la sesion expiro mientras
+    estaba offline, se redirige al login primero.
+  - Los datos en IndexedDB NO estan encriptados por defecto.
+    Para datos sensibles, considerar encriptar con SubtleCrypto API.
+  - El endpoint /api/offline/master-data debe filtrar datos solo
+    del fabricante y RFV autenticado (no exponer datos de otros).
+
+8.2 - LIMPIEZA DE DATOS
+----------------------------------------------------------------------
+  - El cache de datos maestros expira automaticamente (configurable,
+    sugerido: 24 horas para productos, 7 dias para tipos de actividad).
+  - Las operaciones sincronizadas exitosamente en sync_log se
+    eliminan despues de 30 dias.
+  - Al cerrar sesion, se limpian TODOS los datos de IndexedDB.
+
+8.3 - LIMITACIONES CONOCIDAS
+----------------------------------------------------------------------
+  - La firma del cliente (Firma_cliente en reportes) NO se puede
+    capturar offline de forma confiable. Se omite en modo offline
+    y se puede agregar despues.
+  - Las muestras medicas tienen inventario limitado. Offline no se
+    puede validar stock en tiempo real. Se valida al sincronizar.
+  - Si dos RFV trabajan offline con el mismo cliente y los datos
+    se sincronizan al mismo tiempo, podria haber pedidos duplicados.
+    Solucion: el local_ref previene duplicados exactos.
+
+8.4 - DEPENDENCIAS A INSTALAR
+----------------------------------------------------------------------
+  npm install dexie                     # IndexedDB wrapper (~45KB)
+  npm install -D workbox-webpack-plugin # Solo si se usa Workbox
+                                        # (VitePWA ya lo incluye)
+
+  NO se necesita SQLite, no se necesita WASM, no se necesitan
+  bases de datos externas. Todo funciona con lo que el navegador
+  ya tiene incorporado.
+
+
+================================================================================
+PARTE 9: EJEMPLO DE CODIGO CLAVE
+================================================================================
+
+9.1 - ESQUEMA DE LA BASE DE DATOS LOCAL (db.ts)
+----------------------------------------------------------------------
+
+  import Dexie from 'dexie'
+
+  class SiifOfflineDB extends Dexie {
+    constructor() {
+      super('siif2-offline')
+
+      this.version(1).stores({
+        cached_clientes: 'id, nombre, cached_at',
+        cached_productos: 'id, codigo, nombre, cached_at',
+        cached_mayoristas: 'id, nombre, cached_at',
+        cached_actividades_tipos: 'id, cached_at',
+        cached_incidentes_tipos: 'id, cached_at',
+        cached_muestras: 'id, codigo, cached_at',
+        sync_queue: '++id, type, status, created_at',
+        sync_log: '++id, type, local_ref, synced_at'
+      })
+    }
+  }
+
+  export const db = new SiifOfflineDB()
+
+
+9.2 - USO EN TOMA DE PEDIDOS (EJEMPLO SIMPLIFICADO)
+----------------------------------------------------------------------
+
+  // En TomaDePedidos.vue
+
+  import { useOffline } from '@/offline/composables/useOffline'
+
+  const { isOnline, submitOrQueue } = useOffline()
+
+  // Al cargar la pagina
+  onMounted(async () => {
+    if (!isOnline.value) {
+      // Cargar datos desde IndexedDB
+      clientes.value = await cacheService.getClientes()
+      productos.value = await cacheService.getProductos()
+      mayoristas.value = await cacheService.getMayoristas()
+    }
+    // Si hay internet, los datos vienen del servidor via Inertia (como hoy)
+  })
+
+  // Al enviar el pedido
+  const procesarPedido = async () => {
+    const payload = {
+      cliente: selectedCliente.value,
+      representante: selectedRFV.value,
+      mayoristas: rowsMayoristas.value.map(...),
+      productos: items.value.map(...),
+      descripcion: descripcion.value,
+      impuesto: tax.value
+    }
+
+    const result = await submitOrQueue('order', payload, '/toma-de-pedidos')
+
+    if (result.queued) {
+      showSuccess('Pedido guardado localmente: ' + result.localRef)
+    } else {
+      showSuccess('Pedido enviado exitosamente')
+    }
+  }
+
+
+================================================================================
+PARTE 10: RESUMEN EJECUTIVO
+================================================================================
+
+  QUE SE VA A HACER:
+  Agregar la capacidad de trabajar sin internet a la PWA de SIIF2,
+  especificamente para los vendedores (RFV) que toman pedidos y
+  registran actividades en campo.
+
+  COMO FUNCIONA:
+  Los datos necesarios (clientes, productos, etc.) se descargan y
+  guardan en el navegador. Cuando no hay internet, los formularios
+  usan esos datos locales. Las operaciones se guardan en una cola
+  y se envian automaticamente cuando vuelve la conexion.
+
+  TECNOLOGIA:
+  IndexedDB (nativo del navegador) con Dexie.js, NO SQLite.
+  Background Sync API del Service Worker para sincronizacion.
+  Workbox para cache de assets (HTML, JS, CSS).
+
+  IMPACTO EN CODIGO EXISTENTE:
+  Minimo. Los formularios existentes solo necesitan una modificacion
+  en la funcion de envio (usar submitOrQueue en vez de router.post).
+  El backend solo necesita 1 endpoint nuevo (/api/offline/master-data).
+
+  RIESGO:
+  Bajo. Todo el sistema offline es ADICIONAL. Si falla, el sistema
+  sigue funcionando normalmente con internet (como hoy).
+
+================================================================================
