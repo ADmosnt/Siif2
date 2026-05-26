@@ -9,7 +9,7 @@ import { ZiggyVue } from 'ziggy-js'
 import { initializeTheme } from './composables/useAppearance'
 import { setupAxiosInterceptors } from './plugins/axiosInterceptors'
 import { setupInertiaAlerts } from './plugins/inertiaAlerts'
-import OfflineBanner from './components/OfflineBanner.vue'
+import SyncStatusBar from './components/OfflineSync/SyncStatusBar.vue'
 import PushNotificationPrompt from './components/PushNotificationPrompt.vue'
 import axios from 'axios'
 
@@ -24,7 +24,7 @@ createInertiaApp({
     ),
   setup({ el, App, props, plugin }) {
     const app = createApp({
-      render: () => [h(OfflineBanner), h(PushNotificationPrompt), h(App, props)],
+      render: () => [h(SyncStatusBar), h(PushNotificationPrompt), h(App, props)],
     })
     const pinia = createPinia()
 

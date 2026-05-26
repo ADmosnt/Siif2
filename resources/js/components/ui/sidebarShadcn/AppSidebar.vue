@@ -64,6 +64,10 @@ const data = {
           title: 'Seguimiento de Pedidos',
           url: 'seguimiento',
         },
+        {
+          title: 'Cola de Sincronizacion',
+          url: '/sync-queue',
+        },
       ],
     },
 

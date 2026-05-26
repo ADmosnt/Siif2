@@ -1,0 +1,166 @@
+import { db } from './db'
+import type {
+  CachedCliente,
+  CachedProducto,
+  CachedMayorista,
+  CachedTipoActividad,
+  CachedTipoIncidente,
+  MasterDataResponse,
+} from './types'
+
+const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 horas
+
+function isCacheStale(cached_at: number, maxAge = CACHE_MAX_AGE_MS): boolean {
+  return Date.now() - cached_at > maxAge
+}
+
+export async function getLastCacheTimestamp(): Promise<number | null> {
+  const first = await db.cached_clientes.orderBy('cached_at').reverse().first()
+  return first?.cached_at ?? null
+}
+
+export async function isCacheAvailable(): Promise<boolean> {
+  const count = await db.cached_clientes.count()
+  return count > 0
+}
+
+export async function isCacheFresh(): Promise<boolean> {
+  const ts = await getLastCacheTimestamp()
+  if (!ts) return false
+  return !isCacheStale(ts)
+}
+
+// --- GUARDAR datos maestros descargados del servidor ---
+
+export async function storeMasterData(data: MasterDataResponse): Promise<void> {
+  const now = Date.now()
+
+  await db.transaction('rw', [
+    db.cached_clientes,
+    db.cached_productos,
+    db.cached_mayoristas,
+    db.cached_actividades_tipos,
+    db.cached_incidentes_tipos,
+  ], async () => {
+    await db.cached_clientes.clear()
+    await db.cached_productos.clear()
+    await db.cached_mayoristas.clear()
+    await db.cached_actividades_tipos.clear()
+    await db.cached_incidentes_tipos.clear()
+
+    if (data.clientes?.length) {
+      await db.cached_clientes.bulkPut(
+        data.clientes.map((c: any) => ({
+          id: c.id ?? c.idPersona,
+          nombre: c.nombre ?? c.nombre_completo_razon_social ?? '',
+          documento: c.documento ?? c.documento_identidad ?? '',
+          telefono: c.telefono ?? c.telefono_persona ?? '',
+          direccion: c.direccion ?? c.direccion_domicilio ?? '',
+          email: c.email ?? '',
+          ranking: c.ranking ?? c.idranking ?? '',
+          frecuencia: c.frecuencia ?? c.idfrecuencia ?? '',
+          cached_at: now,
+        }))
+      )
+    }
+
+    const allProducts = [...(data.productos || []), ...(data.muestras || [])]
+    if (allProducts.length) {
+      await db.cached_productos.bulkPut(
+        allProducts.map((p: any) => ({
+          id: p.id ?? p.idproducto ?? p.codigo,
+          codigo: p.codigo ?? p.idproducto ?? '',
+          nombre: p.nombre ?? p.nombre_producto ?? p.producto ?? '',
+          precio: Number(p.precio ?? p.Precio_producto ?? 0),
+          existencia: Number(p.existencia ?? p.cantidad_producto_existente ?? 0),
+          linea: p.linea ?? '',
+          lote: p.lote ?? '',
+          categoria: p.categoria ?? p.idcategorias ?? 'PROD',
+          cached_at: now,
+        }))
+      )
+    }
+
+    if (data.mayoristas?.length) {
+      await db.cached_mayoristas.bulkPut(
+        data.mayoristas.map((m: any) => ({
+          id: m.id ?? m.codigo ?? m.idPersona,
+          nombre: m.nombre ?? m.mayorista ?? m.nombre_completo_razon_social ?? '',
+          cached_at: now,
+        }))
+      )
+    }
+
+    if (data.actividades?.length) {
+      await db.cached_actividades_tipos.bulkPut(
+        data.actividades.map((a: any) => ({
+          id: a.idtipo_actividad ?? a.idtipo_actividades,
+          descripcion: a.descripcionActividad ?? a.descripcion_tipo_actividades ?? '',
+          cached_at: now,
+        }))
+      )
+    }
+
+    if (data.incidentes?.length) {
+      await db.cached_incidentes_tipos.bulkPut(
+        data.incidentes.map((i: any) => ({
+          id: Number(i.idtipo_incidentes),
+          descripcion: i.descripcionIncidente ?? i.descripcion ?? i.descripcion_tipo_incidentes ?? '',
+          cached_at: now,
+        }))
+      )
+    }
+  })
+}
+
+// --- LEER datos desde cache local ---
+
+export async function getClientes(): Promise<CachedCliente[]> {
+  return db.cached_clientes.orderBy('nombre').toArray()
+}
+
+export async function getProductos(): Promise<CachedProducto[]> {
+  return db.cached_productos.where('categoria').notEqual('MUES').sortBy('nombre')
+}
+
+export async function getMuestras(): Promise<CachedProducto[]> {
+  return db.cached_productos.where('categoria').equals('MUES').sortBy('nombre')
+}
+
+export async function getAllProductos(): Promise<CachedProducto[]> {
+  return db.cached_productos.orderBy('nombre').toArray()
+}
+
+export async function getMayoristas(): Promise<CachedMayorista[]> {
+  return db.cached_mayoristas.orderBy('nombre').toArray()
+}
+
+export async function getTiposActividad(): Promise<CachedTipoActividad[]> {
+  return db.cached_actividades_tipos.toArray()
+}
+
+export async function getTiposIncidente(): Promise<CachedTipoIncidente[]> {
+  return db.cached_incidentes_tipos.toArray()
+}
+
+export async function searchClientes(term: string): Promise<CachedCliente[]> {
+  if (!term || term.length < 2) return []
+  const lower = term.toLowerCase()
+  return db.cached_clientes
+    .filter(c => c.nombre.toLowerCase().includes(lower) || c.id.includes(term))
+    .limit(20)
+    .toArray()
+}
+
+export async function searchProductos(term: string, categoria?: string): Promise<CachedProducto[]> {
+  if (!term || term.length < 2) return []
+  const lower = term.toLowerCase()
+  return db.cached_productos
+    .filter(p => {
+      const matchesSearch = p.nombre.toLowerCase().includes(lower) || p.codigo.includes(term)
+      if (categoria) return matchesSearch && p.categoria === categoria
+      return matchesSearch
+    })
+    .limit(20)
+    .toArray()
+}

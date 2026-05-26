@@ -163,6 +163,10 @@ Route::middleware(['auth',])->group(function () {
     // ========================================
     Route::post('/contacto', [ContactController::class, 'send'])->name('contact.send');
 
+    // --- OFFLINE / PWA ---
+    Route::get('/offline/master-data', [\App\Http\Controllers\Api\OfflineController::class, 'masterData'])->name('offline.master-data');
+    Route::get('/sync-queue', fn() => Inertia::render('SyncQueue'))->name('sync-queue');
+
 });
 
 // ================================

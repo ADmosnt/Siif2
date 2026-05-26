@@ -52,6 +52,7 @@
         "concurrently": "^9.0.1",
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
+        "dexie": "^4.4.2",
         "dropzone": "^6.0.0-beta.2",
         "dropzone-vue": "^0.1.11",
         "gsap": "^3.13.0",
@@ -67,10 +68,10 @@
         "typescript": "^5.2.2",
         "uuid": "^13.0.0",
         "vaul-vue": "^0.4.1",
+        "vite-plugin-pwa": "^0.21.1",
         "vue": "^3.5.13",
         "vue-router": "^4.5.1",
         "vue3-dropzone": "^2.2.1",
-        "vite-plugin-pwa": "^0.21.1",
         "ziggy-js": "^2.5.3"
     },
     "optionalDependencies": {
