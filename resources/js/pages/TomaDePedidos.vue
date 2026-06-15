@@ -15,6 +15,7 @@ import TablesTdp from '@/components/TdpComponents/TablesTdp.vue';
 import GlobalAlert from '@/components/GlobalAlert.vue';
 import { useValidationAlert } from '@/composables/useValidationAlert';
 import ClienteCombobox from '@/components/ClienteCombobox.vue';
+import { useOffline } from '@/composables/useOffline';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { label: 'Centro de Transferencias (CT)' },
@@ -32,6 +33,9 @@ const props = defineProps<{
   mayoristas?: PaginatedData<Mayoristas>;
   productos?: PaginatedData<Producto>;
 }>();
+
+// === OFFLINE ===
+const { isOnline, submitOrQueue } = useOffline()
 
 // === USAR COMPOSABLE PARA ALERTAS ===
 const {
@@ -53,9 +57,9 @@ const tax = ref(16);
 
 // datos paginados
 const representantes = computed(() => {
-  return (props.representantes?.data || []).filter(rep => 
-    rep.id !== null && 
-    rep.id !== undefined && 
+  return (props.representantes?.data || []).filter(rep =>
+    rep.id !== null &&
+    rep.id !== undefined &&
     rep.id.toString().trim() !== ""
   );
 });
@@ -102,7 +106,7 @@ const resetForm = () => {
   items.value = [];
 };
 
-const procesarPedido = () => {
+const procesarPedido = async () => {
   clearAlerts();
 
   // === VALIDACIONES ===
@@ -146,7 +150,24 @@ const procesarPedido = () => {
     }))
   };
 
-  // Enviar al backend
+  if (!isOnline.value) {
+    loading.value = true
+    try {
+      const result = await submitOrQueue('order', datosPrimarios)
+      if (result.queued) {
+        showSuccess(`Pedido guardado localmente (${result.localRef}). Se enviara cuando haya conexion.`)
+        resetForm()
+        keyTables.value++
+      }
+    } catch (err: any) {
+      showError('Error al guardar el pedido localmente.')
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+
+  // Online: enviar normalmente via Inertia
   router.post(
     route('toma-de-pedidos.procesar'),
     datosPrimarios,
@@ -328,8 +349,11 @@ watch(representantes, (newList) => {
             />
           </div>
 
-          <div class="ml-auto">
-            <Button @click="procesarPedido">PROCESAR</Button>
+          <div class="ml-auto flex items-center gap-2">
+            <span v-if="!isOnline" class="text-xs text-amber-600 font-medium">Modo offline</span>
+            <Button @click="procesarPedido">
+              {{ isOnline ? 'PROCESAR' : 'GUARDAR PEDIDO' }}
+            </Button>
           </div>
         </div>
 

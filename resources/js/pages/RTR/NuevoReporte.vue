@@ -14,6 +14,7 @@ import { type MuestrasItem, Producto, Actividad,Representante, Evento, VisitaTem
 import GlobalAlert from '@/components/GlobalAlert.vue';
 import { useValidationAlert } from '@/composables/useValidationAlert';
 import ClienteCombobox from '@/components/ClienteCombobox.vue';
+import { useOffline } from '@/composables/useOffline';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { label: 'SIIF', href: '/dashboard' },
@@ -28,6 +29,9 @@ const props = defineProps<{
     productos?: PaginatedData<Producto>;
     visitaTemporal?: VisitaTemporal;
 }>();
+
+// === OFFLINE ===
+const { isOnline, submitOrQueue } = useOffline()
 
     // === USAR COMPOSABLE PARA ALERTAS ===
 const {
@@ -123,18 +127,7 @@ const actividadSeleccionadaDescripcion = computed(() => {
 });
 
 // === FUNCIÓN PARA PROCESAR EL REPORTE ===
-const procesarReporte = () => { clearAlerts();
-
-
-        console.log('🔍 Datos a enviar en procesarReporte:', {
-        selectedCliente: selectedCliente.value,
-        selectedRFV: selectedRFV.value,
-        actividadSeleccionada: actividadSeleccionada.value,
-        eventoSeleccionado: eventoSeleccionado.value,
-        visitaTemporalId: visitaTemporalId.value,
-        descripcion: descripcion.value,
-        muestras: rowsMuestras.value
-    });
+const procesarReporte = async () => { clearAlerts();
 
     if (!selectedCliente.value || !selectedRFV.value) {
         showWarning('Por favor selecciona un cliente y representante');
@@ -157,7 +150,6 @@ const procesarReporte = () => { clearAlerts();
         return;
     }
 
-    // Construir payload
     const payload = {
         idcliente: selectedCliente.value.value,
         tipo: actividadSeleccionada.value,
@@ -169,10 +161,26 @@ const procesarReporte = () => { clearAlerts();
             lote: item.lote
         })),
         rfv_id: selectedRFV.value,
-        ...(visitaTemporalId.value ? { visita_temporal_id: visitaTemporalId.value } : {}) 
+        ...(visitaTemporalId.value ? { visita_temporal_id: visitaTemporalId.value } : {})
     };
 
-    router.post(route('reportes.procesar'), payload, { 
+    if (!isOnline.value) {
+        loading.value = true
+        try {
+            const result = await submitOrQueue('report', payload)
+            if (result.queued) {
+                showSuccess(`Reporte guardado localmente (${result.localRef}). Se enviara cuando haya conexion.`)
+                resetForm()
+            }
+        } catch (err: any) {
+            showError('Error al guardar el reporte localmente.')
+        } finally {
+            loading.value = false
+        }
+        return
+    }
+
+    router.post(route('reportes.procesar'), payload, {
         onStart: () => { loading.value = true; },
         onFinish: () => { loading.value = false; },
         onSuccess: () => {
@@ -433,9 +441,10 @@ onMounted(() => {
             />
         </div>
 
-        <div class="flex justify-end mt-4 px-4">
+        <div class="flex justify-end mt-4 px-4 items-center gap-2">
+            <span v-if="!isOnline" class="text-xs text-amber-600 font-medium">Modo offline</span>
             <Button @click="onProcess">
-            PROCESAR
+            {{ isOnline ? 'PROCESAR' : 'GUARDAR REPORTE' }}
             </Button>
         </div>
         </div>

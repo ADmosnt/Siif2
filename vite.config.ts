@@ -21,7 +21,7 @@ export default defineConfig({
         tailwindcss(),
         VitePWA({
             registerType: 'autoUpdate',
-            manifest: false, // Usamos manifest.json manual en public/
+            manifest: false,
             includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
             workbox: {
                 globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
@@ -35,6 +35,35 @@ export default defineConfig({
                             expiration: {
                                 maxEntries: 10,
                                 maxAgeSeconds: 60 * 60 * 24 * 365,
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200],
+                            },
+                        },
+                    },
+                    {
+                        urlPattern: ({ request }) => request.mode === 'navigate',
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'pages-cache',
+                            expiration: {
+                                maxEntries: 30,
+                                maxAgeSeconds: 60 * 60 * 24 * 7,
+                            },
+                            cacheableResponse: {
+                                statuses: [0, 200],
+                            },
+                            networkTimeoutSeconds: 5,
+                        },
+                    },
+                    {
+                        urlPattern: /\/offline\/master-data/,
+                        handler: 'NetworkFirst',
+                        options: {
+                            cacheName: 'master-data-cache',
+                            expiration: {
+                                maxEntries: 1,
+                                maxAgeSeconds: 60 * 60 * 24,
                             },
                             cacheableResponse: {
                                 statuses: [0, 200],
