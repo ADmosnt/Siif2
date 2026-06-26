@@ -6,7 +6,8 @@ export function setupAxiosInterceptors() {
   // Interceptor de respuesta para errores HTTP
   axios.interceptors.response.use(
     (response) => {
-      // Si la respuesta tiene un mensaje de éxito, mostrarlo
+      if (response.config?._suppressAlert) return response
+
       if (response.data?.message && response.status >= 200 && response.status < 300) {
         const alertStore = useAlertStore()
         alertStore.showSuccess(response.data.message)
@@ -14,8 +15,12 @@ export function setupAxiosInterceptors() {
       return response
     },
     (error) => {
+      if (error.config?._suppressAlert) {
+        return Promise.reject(error)
+      }
+
       const alertStore = useAlertStore()
-      
+
       if (error.response) {
         // Error del servidor
         const { status, data } = error.response

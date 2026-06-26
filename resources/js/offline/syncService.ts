@@ -90,7 +90,9 @@ export async function submitOrQueue(
 ): Promise<{ queued: boolean; localRef?: string; serverId?: any }> {
   if (navigator.onLine) {
     try {
-      const response = await axios.post(ENDPOINT_MAP[type], payload)
+      const response = await axios.post(ENDPOINT_MAP[type], payload, {
+        _suppressAlert: true,
+      } as any)
       return { queued: false, serverId: response.data?.id }
     } catch (error) {
       if (isNetworkError(error)) {
@@ -128,7 +130,9 @@ export async function processQueue(): Promise<SyncResult> {
     try {
       await db.sync_queue.update(item.id!, { status: 'sending' })
 
-      const response = await axios.post(ENDPOINT_MAP[item.type], item.payload)
+      const response = await axios.post(ENDPOINT_MAP[item.type], item.payload, {
+        _suppressAlert: true,
+      } as any)
 
       await db.sync_log.add({
         type: item.type,

@@ -26,6 +26,7 @@ export const useOfflineStore = defineStore('offline', () => {
   const lastCacheTime = ref<number | null>(null)
   const queueItems = ref<SyncQueueItem[]>([])
   const logEntries = ref<SyncLogEntry[]>([])
+  let initialized = false
 
   const hasPendingItems = computed(() => pendingCount.value > 0)
 
@@ -103,7 +104,7 @@ export const useOfflineStore = defineStore('offline', () => {
   function handleOnline() {
     isOnline.value = true
     if (pendingCount.value > 0) {
-      syncNow()
+      syncNow().catch(() => {})
     }
   }
 
@@ -112,6 +113,8 @@ export const useOfflineStore = defineStore('offline', () => {
   }
 
   function init() {
+    if (initialized) return
+    initialized = true
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
     isOnline.value = navigator.onLine
