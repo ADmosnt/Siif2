@@ -29,6 +29,12 @@ const isSubmitting = ref(false);
 const submit = () => {
   // Limpiar errores previos
   generalError.value = null;
+
+  if (!navigator.onLine) {
+    generalError.value = 'Se requiere conexión a internet para iniciar sesión.';
+    return;
+  }
+
   isSubmitting.value = true;
 
   form.post(route('login'), {

@@ -14,7 +14,8 @@ class OfflineController extends Controller
 {
     public function masterData(): JsonResponse
     {
-        $user = Auth::user();
+        $authUser = Auth::user();
+        $user = TPersona::findOrFail($authUser->idPersona);
         $idFabricante = $user->idFabricante;
 
         $clientes = $this->getClientes($user);
