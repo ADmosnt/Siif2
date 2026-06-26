@@ -22,7 +22,7 @@ export interface CachedProducto {
   cached_at: number
 }
 
-export interface CachedMayorista {
+export interface CachedPersona {
   id: string
   nombre: string
   cached_at: number
@@ -37,6 +37,17 @@ export interface CachedTipoActividad {
 export interface CachedTipoIncidente {
   id: number
   descripcion: string
+  cached_at: number
+}
+
+export interface CachedAuth {
+  id: string
+  name: string
+  password_hash: string
+  nombre_completo: string
+  idFabricante: string
+  idgrupo_persona: string
+  email: string
   cached_at: number
 }
 
@@ -68,6 +79,9 @@ export interface MasterDataResponse {
   clientes: any[]
   productos: any[]
   mayoristas: any[]
+  representantes: any[]
+  supervisores: any[]
+  gerentes: any[]
   actividades: any[]
   incidentes: any[]
   muestras: any[]

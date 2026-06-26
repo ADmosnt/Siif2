@@ -18,21 +18,33 @@ class OfflineController extends Controller
         $user = TPersona::findOrFail($authUser->idPersona);
         $idFabricante = $user->idFabricante;
 
-        $clientes = $this->getClientes($user);
-        $productos = $this->getProductos($idFabricante);
-        $muestras = $this->getMuestras($idFabricante);
-        $mayoristas = $this->getMayoristas($idFabricante);
-        $actividades = $this->getActividades($idFabricante);
-        $incidentes = $this->getIncidentes($idFabricante);
+        return response()->json([
+            'clientes' => $this->getClientes($user),
+            'productos' => $this->getProductos($idFabricante),
+            'muestras' => $this->getMuestras($idFabricante),
+            'mayoristas' => $this->getMayoristas($idFabricante),
+            'representantes' => $this->getRepresentantes($idFabricante),
+            'supervisores' => $this->getSupervisores($idFabricante),
+            'gerentes' => $this->getGerentes($idFabricante),
+            'actividades' => $this->getActividades($idFabricante),
+            'incidentes' => $this->getIncidentes($idFabricante),
+            'timestamp' => now()->timestamp,
+        ]);
+    }
+
+    public function cacheAuth(): JsonResponse
+    {
+        $authUser = Auth::user();
+        $user = TPersona::findOrFail($authUser->idPersona);
 
         return response()->json([
-            'clientes' => $clientes,
-            'productos' => $productos,
-            'muestras' => $muestras,
-            'mayoristas' => $mayoristas,
-            'actividades' => $actividades,
-            'incidentes' => $incidentes,
-            'timestamp' => now()->timestamp,
+            'idPersona' => $user->idPersona,
+            'name' => $authUser->name,
+            'password_hash' => $authUser->password,
+            'nombre_completo' => $user->nombre_completo_razon_social,
+            'idFabricante' => $user->idFabricante,
+            'idgrupo_persona' => $user->idgrupo_persona,
+            'email' => $user->email ?? '',
         ]);
     }
 
@@ -104,6 +116,42 @@ class OfflineController extends Controller
             ->map(fn(TPersona $m) => [
                 'id' => $m->idPersona,
                 'nombre' => $m->nombre_completo_razon_social,
+            ])->toArray();
+    }
+
+    private function getRepresentantes(string $idFabricante): array
+    {
+        return TPersona::where('idgrupo_persona', 'RFV')
+            ->where('idFabricante', $idFabricante)
+            ->where('idestatus', 1)
+            ->get()
+            ->map(fn(TPersona $r) => [
+                'id' => $r->idPersona,
+                'nombre' => $r->nombre_completo_razon_social,
+            ])->toArray();
+    }
+
+    private function getSupervisores(string $idFabricante): array
+    {
+        return TPersona::where('idgrupo_persona', 'SUP')
+            ->where('idFabricante', $idFabricante)
+            ->where('idestatus', 1)
+            ->get()
+            ->map(fn(TPersona $s) => [
+                'id' => $s->idPersona,
+                'nombre' => $s->nombre_completo_razon_social,
+            ])->toArray();
+    }
+
+    private function getGerentes(string $idFabricante): array
+    {
+        return TPersona::where('idgrupo_persona', 'GRT')
+            ->where('idFabricante', $idFabricante)
+            ->where('idestatus', 1)
+            ->get()
+            ->map(fn(TPersona $g) => [
+                'id' => $g->idPersona,
+                'nombre' => $g->nombre_completo_razon_social,
             ])->toArray();
     }
 

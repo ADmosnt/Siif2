@@ -1,7 +1,7 @@
 <!-- resources/js/pages/auth/Login.vue -->
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { LoaderCircle, AlertCircle } from 'lucide-vue-next';
+import { LoaderCircle, AlertCircle, WifiOff } from 'lucide-vue-next';
 import { ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import { verifyOfflineCredentials, createOfflineSession } from '@/offline/authService';
+import { useOfflineStore } from '@/stores/offlineStore';
 
 defineProps<{
   status?: string;
@@ -25,16 +27,37 @@ const form = useForm({
 
 const generalError = ref<string | null>(null);
 const isSubmitting = ref(false);
+const offlineMode = ref(!navigator.onLine);
 
-const submit = () => {
-  // Limpiar errores previos
+window.addEventListener('online', () => { offlineMode.value = false })
+window.addEventListener('offline', () => { offlineMode.value = true })
+
+const submitOffline = async () => {
   generalError.value = null;
+  isSubmitting.value = true;
 
-  if (!navigator.onLine) {
-    generalError.value = 'Se requiere conexión a internet para iniciar sesión.';
-    return;
+  try {
+    const result = await verifyOfflineCredentials(form.name, form.password);
+
+    if (!result.success) {
+      generalError.value = result.error || 'Error de autenticacion offline.';
+      return;
+    }
+
+    const session = createOfflineSession(result.user!);
+    const store = useOfflineStore();
+    store.setOfflineSession(session);
+
+    window.location.href = '/tdp';
+  } catch (err) {
+    generalError.value = 'Error verificando credenciales localmente.';
+  } finally {
+    isSubmitting.value = false;
   }
+};
 
+const submitOnline = () => {
+  generalError.value = null;
   isSubmitting.value = true;
 
   form.post(route('login'), {
@@ -44,17 +67,25 @@ const submit = () => {
     },
     onError: (errors) => {
       isSubmitting.value = false;
-      
-      // Si hay errores de validación específicos, no mostrar error general
       if (!errors.name && !errors.password) {
         generalError.value = 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
       }
     },
     onSuccess: () => {
       generalError.value = null;
+      const store = useOfflineStore();
+      store.cacheAllOnLogin().catch(() => {});
     },
     preserveScroll: true,
   });
+};
+
+const submit = () => {
+  if (offlineMode.value) {
+    submitOffline();
+  } else {
+    submitOnline();
+  }
 };
 
 const clearGeneralError = () => {
@@ -67,7 +98,6 @@ const clearGeneralError = () => {
 
   <div class="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
     <div class="w-full max-w-sm md:max-w-4xl">
-      <!-- Componente de login con diseño shadcn -->
       <div class="flex flex-col gap-6">
         <Card class="overflow-hidden p-0">
           <CardContent class="grid p-0 md:grid-cols-2">
@@ -84,6 +114,14 @@ const clearGeneralError = () => {
                   </p>
                 </div>
 
+                <!-- Indicador offline -->
+                <div v-if="offlineMode" class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div class="flex items-center text-sm text-amber-700 dark:text-amber-300">
+                    <WifiOff class="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span>Modo offline — se verificara con credenciales guardadas localmente.</span>
+                  </div>
+                </div>
+
                 <!-- Mensaje de status -->
                 <div v-if="status" class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                   <div class="text-sm text-green-700 dark:text-green-300 text-center">
@@ -98,8 +136,8 @@ const clearGeneralError = () => {
                     <div class="text-sm text-red-700 dark:text-red-300">
                       {{ generalError }}
                     </div>
-                    <button 
-                      @click="clearGeneralError" 
+                    <button
+                      @click="clearGeneralError"
                       class="ml-auto text-red-500 hover:text-red-700"
                       type="button"
                     >
@@ -138,13 +176,6 @@ const clearGeneralError = () => {
                     <FieldLabel for="password" class="text-gray-700 dark:text-gray-300">
                       Contraseña
                     </FieldLabel>
-                    <!-- Opcional: Enlace para recuperar contraseña -->
-                    <!-- <a
-                      href="#"
-                      class="ml-auto text-sm text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline"
-                    >
-                      Forgot your password?
-                    </a> -->
                   </div>
                   <Input
                     id="password"
@@ -166,15 +197,20 @@ const clearGeneralError = () => {
 
                 <!-- Botón de Login -->
                 <Field>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     :disabled="form.processing || isSubmitting"
                   >
-                    <LoaderCircle 
-                      v-if="form.processing || isSubmitting" 
-                      class="h-4 w-4 animate-spin mr-2" 
+                    <LoaderCircle
+                      v-if="form.processing || isSubmitting"
+                      class="h-4 w-4 animate-spin mr-2"
                     />
-                    {{ (form.processing || isSubmitting) ? 'Iniciando sesión...' : 'Iniciar sesión' }}
+                    {{ (form.processing || isSubmitting)
+                      ? 'Iniciando sesión...'
+                      : offlineMode
+                        ? 'Iniciar sesión (offline)'
+                        : 'Iniciar sesión'
+                    }}
                   </Button>
                 </Field>
 
@@ -185,17 +221,15 @@ const clearGeneralError = () => {
               </FieldGroup>
             </form>
 
-            <!-- Columna derecha con imagen (opcional) -->
+            <!-- Columna derecha con imagen -->
             <div class="bg-linear-to-br from-blue-600 to-blue-800 relative hidden md:block">
               <div class="absolute inset-0 flex items-center justify-center p-8">
                 <div class="text-center text-white">
                   <div class="w-16 h-16 bg-white/60 rounded-full flex items-center justify-center mx-auto mb-4">
-                    
-                    <img 
-                      :src="SiifIcon" 
-                      alt="SIIF Logo" 
+                    <img
+                      :src="SiifIcon"
+                      alt="SIIF Logo"
                     />
-
                   </div>
                   <h2 class="text-xl font-bold mb-2">Sistema SIIF</h2>
                   <p class="text-blue-100">Sales Intelligence & Information Framework</p>

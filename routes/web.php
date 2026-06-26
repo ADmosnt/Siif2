@@ -165,8 +165,20 @@ Route::middleware(['auth',])->group(function () {
 
     // --- OFFLINE / PWA ---
     Route::get('/offline/master-data', [\App\Http\Controllers\Api\OfflineController::class, 'masterData'])->name('offline.master-data');
+    Route::get('/offline/cache-auth', [\App\Http\Controllers\Api\OfflineController::class, 'cacheAuth'])->name('offline.cache-auth');
     Route::get('/sync-queue', fn() => Inertia::render('SyncQueue'))->name('sync-queue');
 
+});
+
+// --- SERVICE WORKER CON SCOPE RAÍZ ---
+Route::get('/offline-sw.js', function () {
+    $path = public_path('build/sw.js');
+    if (!file_exists($path)) {
+        abort(404);
+    }
+    return response(file_get_contents($path))
+        ->header('Content-Type', 'application/javascript')
+        ->header('Service-Worker-Allowed', '/');
 });
 
 // ================================

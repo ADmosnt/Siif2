@@ -2,9 +2,10 @@ import { db } from './db'
 import type {
   CachedCliente,
   CachedProducto,
-  CachedMayorista,
+  CachedPersona,
   CachedTipoActividad,
   CachedTipoIncidente,
+  CachedAuth,
   MasterDataResponse,
 } from './types'
 
@@ -39,12 +40,18 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
     db.cached_clientes,
     db.cached_productos,
     db.cached_mayoristas,
+    db.cached_representantes,
+    db.cached_supervisores,
+    db.cached_gerentes,
     db.cached_actividades_tipos,
     db.cached_incidentes_tipos,
   ], async () => {
     await db.cached_clientes.clear()
     await db.cached_productos.clear()
     await db.cached_mayoristas.clear()
+    await db.cached_representantes.clear()
+    await db.cached_supervisores.clear()
+    await db.cached_gerentes.clear()
     await db.cached_actividades_tipos.clear()
     await db.cached_incidentes_tipos.clear()
 
@@ -81,14 +88,23 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
       )
     }
 
-    if (data.mayoristas?.length) {
-      await db.cached_mayoristas.bulkPut(
-        data.mayoristas.map((m: any) => ({
-          id: m.id ?? m.codigo ?? m.idPersona,
-          nombre: m.nombre ?? m.mayorista ?? m.nombre_completo_razon_social ?? '',
-          cached_at: now,
-        }))
-      )
+    const personaGroups = [
+      { data: data.mayoristas, table: db.cached_mayoristas },
+      { data: data.representantes, table: db.cached_representantes },
+      { data: data.supervisores, table: db.cached_supervisores },
+      { data: data.gerentes, table: db.cached_gerentes },
+    ]
+
+    for (const group of personaGroups) {
+      if (group.data?.length) {
+        await group.table.bulkPut(
+          group.data.map((m: any) => ({
+            id: m.id ?? m.codigo ?? m.idPersona,
+            nombre: m.nombre ?? m.mayorista ?? m.nombre_completo_razon_social ?? '',
+            cached_at: now,
+          }))
+        )
+      }
     }
 
     if (data.actividades?.length) {
@@ -113,6 +129,30 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
   })
 }
 
+// --- AUTH CACHE ---
+
+export async function storeAuthData(data: any): Promise<void> {
+  await db.cached_auth.clear()
+  await db.cached_auth.put({
+    id: data.idPersona,
+    name: data.name,
+    password_hash: data.password_hash,
+    nombre_completo: data.nombre_completo,
+    idFabricante: data.idFabricante,
+    idgrupo_persona: data.idgrupo_persona,
+    email: data.email ?? '',
+    cached_at: Date.now(),
+  })
+}
+
+export async function getCachedAuth(): Promise<CachedAuth | undefined> {
+  return db.cached_auth.toCollection().first()
+}
+
+export async function clearAuthCache(): Promise<void> {
+  await db.cached_auth.clear()
+}
+
 // --- LEER datos desde cache local ---
 
 export async function getClientes(): Promise<CachedCliente[]> {
@@ -131,8 +171,20 @@ export async function getAllProductos(): Promise<CachedProducto[]> {
   return db.cached_productos.orderBy('nombre').toArray()
 }
 
-export async function getMayoristas(): Promise<CachedMayorista[]> {
+export async function getMayoristas(): Promise<CachedPersona[]> {
   return db.cached_mayoristas.orderBy('nombre').toArray()
+}
+
+export async function getRepresentantes(): Promise<CachedPersona[]> {
+  return db.cached_representantes.orderBy('nombre').toArray()
+}
+
+export async function getSupervisores(): Promise<CachedPersona[]> {
+  return db.cached_supervisores.orderBy('nombre').toArray()
+}
+
+export async function getGerentes(): Promise<CachedPersona[]> {
+  return db.cached_gerentes.orderBy('nombre').toArray()
 }
 
 export async function getTiposActividad(): Promise<CachedTipoActividad[]> {

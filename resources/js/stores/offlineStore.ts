@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   downloadMasterData,
+  downloadAuthData,
   processQueue,
   getQueueCount,
   getPendingItems,
@@ -12,6 +13,7 @@ import {
   type SyncResult,
 } from '@/offline/syncService'
 import { isCacheAvailable, isCacheFresh, getLastCacheTimestamp } from '@/offline/cacheService'
+import { getOfflineSession, clearOfflineSession, type OfflineSession } from '@/offline/authService'
 import { db } from '@/offline/db'
 import type { SyncQueueItem, SyncLogEntry } from '@/offline/types'
 
@@ -26,9 +28,11 @@ export const useOfflineStore = defineStore('offline', () => {
   const lastCacheTime = ref<number | null>(null)
   const queueItems = ref<SyncQueueItem[]>([])
   const logEntries = ref<SyncLogEntry[]>([])
+  const offlineSession = ref<OfflineSession | null>(getOfflineSession())
   let initialized = false
 
   const hasPendingItems = computed(() => pendingCount.value > 0)
+  const isOfflineAuth = computed(() => offlineSession.value !== null && !isOnline.value)
 
   const lastCacheDate = computed(() => {
     if (!lastCacheTime.value) return null
@@ -60,6 +64,15 @@ export const useOfflineStore = defineStore('offline', () => {
     } finally {
       isDownloading.value = false
     }
+  }
+
+  async function cacheAllOnLogin(): Promise<void> {
+    if (!navigator.onLine) return
+    await Promise.all([
+      downloadMasterData(),
+      downloadAuthData(),
+    ])
+    await refreshCounts()
   }
 
   async function syncNow(): Promise<SyncResult> {
@@ -96,13 +109,27 @@ export const useOfflineStore = defineStore('offline', () => {
 
   async function clearEverything() {
     await db.clearAll()
+    clearOfflineSession()
+    offlineSession.value = null
     await refreshCounts()
     queueItems.value = []
     logEntries.value = []
   }
 
+  function setOfflineSession(session: OfflineSession) {
+    offlineSession.value = session
+  }
+
+  function endOfflineSession() {
+    clearOfflineSession()
+    offlineSession.value = null
+  }
+
   function handleOnline() {
     isOnline.value = true
+    if (offlineSession.value) {
+      endOfflineSession()
+    }
     if (pendingCount.value > 0) {
       syncNow().catch(() => {})
     }
@@ -139,15 +166,20 @@ export const useOfflineStore = defineStore('offline', () => {
     hasPendingItems,
     queueItems,
     logEntries,
+    offlineSession,
+    isOfflineAuth,
     refreshCounts,
     refreshQueue,
     refreshLog,
     downloadData,
+    cacheAllOnLogin,
     syncNow,
     removeItem,
     retryFailedItem,
     cleanOldLogs,
     clearEverything,
+    setOfflineSession,
+    endOfflineSession,
     init,
     destroy,
   }

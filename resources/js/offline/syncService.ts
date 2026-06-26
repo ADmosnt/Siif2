@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios'
 import { db } from './db'
-import { storeMasterData } from './cacheService'
+import { storeMasterData, storeAuthData } from './cacheService'
 import type { SyncQueueItem, SyncOperationType, MasterDataResponse } from './types'
 
 function generateLocalRef(type: SyncOperationType): string {
@@ -40,6 +40,21 @@ export async function downloadMasterData(): Promise<{ success: boolean; error?: 
     return { success: true }
   } catch (error: any) {
     const message = error.response?.data?.message || error.message || 'Error descargando datos'
+    return { success: false, error: message }
+  }
+}
+
+// --- DESCARGAR Y CACHEAR DATOS DE AUTH ---
+
+export async function downloadAuthData(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await axios.get('/offline/cache-auth', {
+      _suppressAlert: true,
+    } as any)
+    await storeAuthData(response.data)
+    return { success: true }
+  } catch (error: any) {
+    const message = error.response?.data?.message || error.message || 'Error cacheando auth'
     return { success: false, error: message }
   }
 }
