@@ -4,6 +4,7 @@ import { ref, watch, type Ref } from 'vue';
 import axios from 'axios';
 import { debounce } from 'lodash';
 import type { VisitaTemporal } from '@/types/ interfaces';
+import { getClientes, searchClientes as searchClientesOffline } from '@/offline/cacheService';
 
 interface UseClienteComboboxParams {
     selectedRFV: Ref<string | null>;
@@ -42,6 +43,11 @@ const loadInitialClientes = async () => {
 
     loadingClientes.value = true;
     try {
+        if (!navigator.onLine) {
+            const cached = await getClientes();
+            clientesFiltrados.value = cached.map(c => ({ value: c.id, label: c.nombre }));
+            return;
+        }
         const response = await axios.get(route('clientes.search'), {
         params: {
             search: '',
@@ -50,10 +56,13 @@ const loadInitialClientes = async () => {
         });
         clientesFiltrados.value = response.data;
     } catch (error) {
-        console.error('Error fetching initial clientes:', error);
-        clientesFiltrados.value = [];
-      // Aquí puedes usar un composable de alertas global si lo tienes
-      // showError('Error al cargar los clientes iniciales.');
+        const cached = await getClientes();
+        if (cached.length > 0) {
+            clientesFiltrados.value = cached.map(c => ({ value: c.id, label: c.nombre }));
+        } else {
+            console.error('Error fetching initial clientes:', error);
+            clientesFiltrados.value = [];
+        }
     } finally {
         loadingClientes.value = false;
     }
@@ -68,6 +77,13 @@ const loadInitialClientes = async () => {
 
         loadingClientes.value = true;
         try {
+        if (!navigator.onLine) {
+            const cached = search
+                ? await searchClientesOffline(search)
+                : await getClientes();
+            clientesFiltrados.value = cached.map(c => ({ value: c.id, label: c.nombre }));
+            return;
+        }
         const response = await axios.get(route('clientes.search'), {
             params: {
             search: search,
@@ -76,10 +92,15 @@ const loadInitialClientes = async () => {
         });
         clientesFiltrados.value = response.data;
         } catch (error) {
-        console.error('Error fetching clientes:', error);
-        clientesFiltrados.value = [];
-        // Aquí puedes usar un composable de alertas global si lo tienes
-        // showError('Error al cargar los clientes.');
+        const cached = search
+            ? await searchClientesOffline(search)
+            : await getClientes();
+        if (cached.length > 0) {
+            clientesFiltrados.value = cached.map(c => ({ value: c.id, label: c.nombre }));
+        } else {
+            console.error('Error fetching clientes:', error);
+            clientesFiltrados.value = [];
+        }
         } finally {
         loadingClientes.value = false;
         }
