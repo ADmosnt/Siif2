@@ -1,5 +1,6 @@
 <!-- resources/js/components/ui/sidebarShadcn/Sidebar.vue -->
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Frame } from 'lucide-vue-next'
 import {FileLinesIcon, ClockIcon, TransferArrowsIcon, SiifIcon, FaqIcon, ContactIcon } from '@/components/icons'
 import NavMain from '@/components/ui/sidebarShadcn/NavMain.vue'
@@ -7,11 +8,15 @@ import NavProjects from '@/components/ui/sidebarShadcn/NavProjects.vue'
 import NavSecondary from '@/components/ui/sidebarShadcn/NavSecondary.vue'
 import NavUser from '@/components/ui/sidebarShadcn/NavUser.vue'
 import {  Sidebar,  SidebarContent,  SidebarFooter,  SidebarHeader,  SidebarMenu,  SidebarMenuButton,  SidebarMenuItem,  type SidebarProps,} from '@/components/ui/sidebar'
+import { useOfflineStore } from '@/stores/offlineStore'
 
+const offlineStore = useOfflineStore()
 
 const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
 })
+
+const OFFLINE_URLS = new Set(['/nuevo-reporte', 'tdp', '/sync-queue'])
 
 const data = {
 
@@ -20,12 +25,12 @@ const data = {
       title: 'Consultas - Reportes',
       url: '/consulta-reporte',
       icon: FileLinesIcon,
-    },    
+    },
     {
       title: 'Consulta Gerencial',
       url: '/consulta-gerencial',
       icon: FileLinesIcon,
-    },  
+    },
     {
       title: 'RTR',
       url: '#',
@@ -78,16 +83,6 @@ const data = {
       url: 'consolidar',
       icon: Frame,
     },
-    // {
-    //   name: 'Sales & Marketing',
-    //   url: '#',
-    //   icon: PieChart,
-    // },
-    // {
-    //   name: 'Travel',
-    //   url: '#',
-    //   icon: Map,
-    // },
   ],
   navSecondary: [
     {
@@ -100,12 +95,13 @@ const data = {
       url: '/Contacto',
       icon: ContactIcon,
     },
-    // {
-    //   title: 'Feedback',
-    //   url: '#',
-    //   icon: Send,
-    // },
   ],
+}
+
+const isOnline = computed(() => offlineStore.isOnline)
+
+function isUrlOfflineEnabled(url: string): boolean {
+  return OFFLINE_URLS.has(url)
 }
 </script>
 
@@ -128,12 +124,12 @@ const data = {
       </SidebarMenu>
     </SidebarHeader>
     <SidebarContent>
-      <NavMain :items="data.navMain" />
-      <NavProjects :projects="data.projects" />
-      <NavSecondary :items="data.navSecondary" class="mt-auto" />
+      <NavMain :items="data.navMain" :is-online="isOnline" :is-url-offline-enabled="isUrlOfflineEnabled" />
+      <NavProjects :projects="data.projects" :is-online="isOnline" :is-url-offline-enabled="isUrlOfflineEnabled" />
+      <NavSecondary :items="data.navSecondary" :is-online="isOnline" :is-url-offline-enabled="isUrlOfflineEnabled" />
     </SidebarContent>
     <SidebarFooter>
-      <NavUser />
+      <NavUser :is-online="isOnline" />
     </SidebarFooter>
   </Sidebar>
 </template>

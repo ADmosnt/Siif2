@@ -24,15 +24,24 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
-defineProps<{
+const props = withDefaults(defineProps<{
   projects: {
     name: string
     url: string
     icon: LucideIcon
   }[]
-}>()
+  isOnline?: boolean
+  isUrlOfflineEnabled?: (url: string) => boolean
+}>(), {
+  isOnline: true,
+  isUrlOfflineEnabled: () => false,
+})
 
 const { isMobile } = useSidebar()
+
+function isDisabled(url: string): boolean {
+  return !props.isOnline && !props.isUrlOfflineEnabled(url)
+}
 </script>
 
 <template>
@@ -40,13 +49,16 @@ const { isMobile } = useSidebar()
     <SidebarGroupLabel>Administrar</SidebarGroupLabel>
     <SidebarMenu>
       <SidebarMenuItem v-for="item in projects" :key="item.name">
-        <SidebarMenuButton as-child>
-          <a :href="item.url">
+        <SidebarMenuButton
+          as-child
+          :class="{ 'opacity-40 pointer-events-none': isDisabled(item.url) }"
+        >
+          <a :href="isDisabled(item.url) ? undefined : item.url">
             <component :is="item.icon" />
             <span>{{ item.name }}</span>
           </a>
         </SidebarMenuButton>
-        <DropdownMenu>
+        <DropdownMenu v-if="!isDisabled(item.url)">
           <DropdownMenuTrigger as-child>
             <SidebarMenuAction show-on-hover>
               <MoreHorizontal />
@@ -74,12 +86,7 @@ const { isMobile } = useSidebar()
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
-      <SidebarMenuItem>
-        <!-- <SidebarMenuButton class="text-sidebar-foreground/70">
-          <MoreHorizontal class="text-sidebar-foreground/70" />
-          <span>More</span>
-        </SidebarMenuButton> -->
-      </SidebarMenuItem>
+      <SidebarMenuItem />
     </SidebarMenu>
   </SidebarGroup>
 </template>
