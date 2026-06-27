@@ -174,15 +174,95 @@ class ConciliarFacturaController extends Controller
                 'fecha_entrega' => now(),
             ]);
 
+            // 9. Generar nueva orden si hay productos faltantes
+            $nuevaOrdenId = null;
+            if ($totalFaltantes > 0) {
+                $estatusEnviada = TEstatusOrdene::withoutGlobalScopes()
+                    ->where('idFabricante', $orden->idFabricante)
+                    ->where('descripcion', 'Enviada')
+                    ->first();
+
+                if ($estatusEnviada) {
+                    $costoFaltantes = 0;
+                    foreach ($productosActualizados as $p) {
+                        $costoFaltantes += $p['faltantes'] * $p['precio'];
+                    }
+
+                    $nuevaOrden = TOrdene::create([
+                        'idOperador' => $orden->idOperador,
+                        'idFabricante' => $orden->idFabricante,
+                        'idPersona' => $orden->idPersona,
+                        'idpasadopor' => $orden->idpasadopor,
+                        'idMayorista' => $orden->idMayorista,
+                        'idPersona_solicitante' => $orden->idPersona_solicitante,
+                        'idpais' => $orden->idpais,
+                        'ididioma' => $orden->ididioma,
+                        'idmoneda' => $orden->idmoneda,
+                        'tipo_operacion' => $orden->tipo_operacion,
+                        'impuesto' => $orden->impuesto,
+                        'costoTotal' => $costoFaltantes,
+                        'fechaOrden' => now(),
+                        'fecha_envio_orden' => now(),
+                        'idestatus' => $estatusEnviada->idestatus,
+                        'TotalUnidades' => $totalFaltantes,
+                        'comentario_entrega' => "Faltantes de orden #{$orden->idorden} (Factura: {$request->nfactura})",
+                    ]);
+
+                    foreach ($productosActualizados as $p) {
+                        if ($p['faltantes'] > 0) {
+                            $productoModel = TProducto::withoutGlobalScopes()->find($p['id']);
+                            $nuevaOrden->productos()->attach($p['id'], [
+                                'idOperador' => $orden->idOperador,
+                                'idFabricante' => $orden->idFabricante,
+                                'item_price' => $p['precio'],
+                                'cantidad_solicitada' => $p['faltantes'],
+                                'nombreproducto' => $productoModel->nombre_producto ?? '',
+                                'item_descuento' => 0,
+                                'item_total' => $p['faltantes'] * $p['precio'],
+                                'item_impuesto' => $orden->impuesto,
+                                'idestatus' => 1,
+                            ]);
+                        }
+                    }
+
+                    // Copiar mayoristas de la orden original
+                    $mayoristasOriginales = $orden->Mayoristas()->withoutGlobalScopes()->get();
+                    foreach ($mayoristasOriginales as $may) {
+                        $pivotData = $may->pivot;
+                        $nuevaOrden->Mayoristas()->attach($may->idPersona, [
+                            'nombre_mayorista' => $pivotData->nombre_mayorista,
+                            'item_descuento' => $pivotData->item_descuento ?? 0,
+                            'orden_total' => $costoFaltantes,
+                            'idOperador' => $orden->idOperador,
+                            'idFabricante' => $orden->idFabricante,
+                            'idpais' => $pivotData->idpais ?? null,
+                            'idCliente' => $pivotData->idCliente ?? null,
+                            'ididioma' => $pivotData->ididioma ?? null,
+                            'idmoneda' => $pivotData->idmoneda ?? null,
+                            'impuesto' => $orden->impuesto,
+                            'idestatus' => $estatusEnviada->idestatus,
+                        ]);
+                    }
+
+                    $nuevaOrdenId = $nuevaOrden->idorden;
+
+                    Log::info('Nueva orden generada por faltantes', [
+                        'orden_original' => $orden->idorden,
+                        'nueva_orden' => $nuevaOrdenId,
+                        'total_faltantes' => $totalFaltantes,
+                        'costo_faltantes' => $costoFaltantes,
+                    ]);
+                }
+            }
+
             DB::commit();
 
-            // 9. Generar nueva orden si hay productos faltantes
-        if ($totalFaltantes > 0 && $orden->Mayoristas()->count() > 1) {
-            return redirect()->route('consolidar.index', [
-                'fabricante' => $request->input('fabricante'),
-                'orden' => $request->input('orden')
-            ])->with('success', 'La orden ha sido conciliada parcialmente');
-        }
+            if ($nuevaOrdenId) {
+                return redirect()->route('consolidar.index', [
+                    'fabricante' => $request->input('fabricante'),
+                    'orden' => $request->input('orden')
+                ])->with('success', "Factura creada. Se genero la orden #{$nuevaOrdenId} con los productos faltantes.");
+            }
 
             return redirect()->route('consolidar.index', [
                 'fabricante' => $request->input('fabricante'),

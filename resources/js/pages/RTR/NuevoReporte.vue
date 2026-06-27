@@ -15,6 +15,8 @@ import GlobalAlert from '@/components/GlobalAlert.vue';
 import { useValidationAlert } from '@/composables/useValidationAlert';
 import ClienteCombobox from '@/components/ClienteCombobox.vue';
 import { useOffline } from '@/composables/useOffline';
+import SignaturePad from '@/components/SignaturePad.vue';
+import { useGeolocation } from '@/composables/useGeolocation';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { label: 'SIIF', href: '/dashboard' },
@@ -32,6 +34,9 @@ const props = defineProps<{
 
 // === OFFLINE ===
 const { isOnline, submitOrQueue } = useOffline()
+
+// === GEOLOCATION ===
+const { coords: geoCoords, error: geoError, loading: geoLoading, permissionDenied: geoDenied, requestLocation } = useGeolocation()
 
     // === USAR COMPOSABLE PARA ALERTAS ===
 const {
@@ -68,6 +73,8 @@ const rowsMuestras = ref<MuestrasItem[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const loadingProductos = ref(false);
+const firmaData = ref<string | null>(null);
+const signaturePadRef = ref<InstanceType<typeof SignaturePad> | null>(null);
 
 // === PAGINACIÓN LOCAL PARA LA TABLA DE MUESTRAS (rowsMuestras) ===
 const muestrasPagination = ref({
@@ -115,6 +122,8 @@ eventoSeleccionado.value = null;
 descripcion.value = '';
 rowsMuestras.value = [];
 muestrasPagination.value.page = 1;
+firmaData.value = null;
+signaturePadRef.value?.clear();
 };
 
 const actividadSeleccionadaDescripcion = computed(() => {
@@ -150,11 +159,33 @@ const procesarReporte = async () => { clearAlerts();
         return;
     }
 
+    if (!firmaData.value) {
+        showWarning('Por favor solicita la firma del cliente');
+        return;
+    }
+
+    // Obtener ubicacion GPS
+    let location = geoCoords.value
+    if (!location) {
+        location = await requestLocation()
+    }
+    if (!location) {
+        if (geoDenied.value) {
+            showError('Debes habilitar la ubicacion para registrar un reporte. Activa el GPS en la configuracion de tu navegador.')
+        } else {
+            showError(geoError.value || 'No se pudo obtener la ubicacion. Intentalo de nuevo.')
+        }
+        return
+    }
+
     const payload = {
         idcliente: selectedCliente.value.value,
         tipo: actividadSeleccionada.value,
         incidentes: eventoSeleccionado.value,
         comentario: descripcion.value,
+        firma: firmaData.value,
+        lat: location.lat,
+        long: location.lon,
         muestras: rowsMuestras.value.map(item => ({
             idproducto: item.codigo,
             cantidad: item.unidades,
@@ -439,6 +470,37 @@ onMounted(() => {
             @update:page="productosPage = $event" 
             @update:pageSize="productosPageSize = $event" 
             />
+        </div>
+
+        <!-- Firma del cliente -->
+        <div class="mt-6 px-4">
+            <SignaturePad
+                ref="signaturePadRef"
+                :disabled="loading"
+                @update:signature="firmaData = $event"
+            />
+        </div>
+
+        <!-- Ubicacion GPS -->
+        <div class="mt-4 px-4">
+            <div v-if="geoCoords" class="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Ubicacion capturada ({{ geoCoords.lat.toFixed(5) }}, {{ geoCoords.lon.toFixed(5) }})</span>
+            </div>
+            <div v-else-if="geoLoading" class="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                <div class="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                <span>Obteniendo ubicacion...</span>
+            </div>
+            <div v-else-if="geoError" class="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span>{{ geoError }}</span>
+                <button type="button" class="underline font-medium" @click="requestLocation">Reintentar</button>
+            </div>
         </div>
 
         <div class="flex justify-end mt-4 px-4 items-center gap-2">

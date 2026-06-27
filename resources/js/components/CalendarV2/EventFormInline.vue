@@ -618,7 +618,7 @@ onMounted(async () => {
       </div>
       
       <!-- Botones -->
-      <div class="mt-6 flex justify-end gap-2">
+      <div class="mt-6 flex flex-wrap justify-end gap-2">
         <button type="button" @click="$emit('cancel')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
           Cancelar
         </button>
@@ -735,7 +735,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="mt-6 flex justify-end gap-2">
+      <div class="mt-6 flex flex-wrap justify-end gap-2">
         <button type="button" @click="$emit('cancel')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
           Cancelar
         </button>

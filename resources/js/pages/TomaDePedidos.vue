@@ -16,6 +16,7 @@ import GlobalAlert from '@/components/GlobalAlert.vue';
 import { useValidationAlert } from '@/composables/useValidationAlert';
 import ClienteCombobox from '@/components/ClienteCombobox.vue';
 import { useOffline } from '@/composables/useOffline';
+import { useGeolocation } from '@/composables/useGeolocation';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { label: 'Centro de Transferencias (CT)' },
@@ -36,6 +37,9 @@ const props = defineProps<{
 
 // === OFFLINE ===
 const { isOnline, submitOrQueue } = useOffline()
+
+// === GEOLOCATION ===
+const { coords: geoCoords, error: geoError, loading: geoLoading, permissionDenied: geoDenied, requestLocation } = useGeolocation()
 
 // === USAR COMPOSABLE PARA ALERTAS ===
 const {
@@ -106,7 +110,7 @@ const resetForm = () => {
   items.value = [];
 };
 
-const procesarPedido = async () => {
+const procesarPedido = async (): Promise<void> => {
   clearAlerts();
 
   // === VALIDACIONES ===
@@ -134,6 +138,20 @@ const procesarPedido = async () => {
         return;
     }
 
+  // Obtener ubicacion GPS
+  let location = geoCoords.value
+  if (!location) {
+    location = await requestLocation()
+  }
+  if (!location) {
+    if (geoDenied.value) {
+      showError('Debes habilitar la ubicacion para tomar un pedido. Activa el GPS en la configuracion de tu navegador.')
+    } else {
+      showError(geoError.value || 'No se pudo obtener la ubicacion. Intentalo de nuevo.')
+    }
+    return
+  }
+
   const datosPrimarios = {
     cliente: clienteId,
     representante: selectedRFV.value,
@@ -143,6 +161,8 @@ const procesarPedido = async () => {
     })),
     descripcion: descripcion.value,
     impuesto: tax.value,
+    lat: location.lat,
+    lon: location.lon,
     productos: items.value.map(item => ({
       id: item.codigo,
       unidades: item.unidades,
@@ -328,6 +348,28 @@ watch(representantes, (newList) => {
           :productos="props.productos"
           @fetch-productos="reloadProductos($event.page, $event.pageSize, $event.search)"
         />
+
+        <!-- Ubicacion GPS -->
+        <div class="px-4">
+            <div v-if="geoCoords" class="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Ubicacion capturada ({{ geoCoords.lat.toFixed(5) }}, {{ geoCoords.lon.toFixed(5) }})</span>
+            </div>
+            <div v-else-if="geoLoading" class="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                <div class="h-3 w-3 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                <span>Obteniendo ubicacion...</span>
+            </div>
+            <div v-else-if="geoError" class="flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <span>{{ geoError }}</span>
+                <button type="button" class="underline font-medium" @click="requestLocation">Reintentar</button>
+            </div>
+        </div>
 
         <!-- Barra de acción abajo -->
         <div class="flex flex-wrap items-center gap-4 p-4 rounded shadow mt-4">

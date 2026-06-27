@@ -262,7 +262,7 @@ defineExpose({
         <div class="modal-shell bg-white dark:bg-gray-800 shadow-xl rounded-2xl flex flex-col" @click.stop style="z-index:101;">
           
           <!-- CABECERA DEL MODAL -->
-          <div class="flex items-center justify-between p-6 pb-4 shrink-0">
+          <div class="flex items-center justify-between p-4 sm:p-6 pb-3 sm:pb-4 shrink-0">
             <div class="flex items-center gap-3">
               <!-- BOTÓN DE RETROCESO -->
               <button v-if="editingId || creating"
@@ -293,7 +293,7 @@ defineExpose({
           </div>
 
           <!-- CONTENIDO PRINCIPAL - GRID DE 2 COLUMNAS -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0 px-6 pb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6 flex-1 min-h-0 px-3 sm:px-6 pb-3 sm:pb-6">
             
             <!-- COLUMNA IZQUIERDA - LISTA DE CLIENTES -->
             <div class="rounded-xl border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col min-h-0">
@@ -498,16 +498,27 @@ defineExpose({
   max-height: 90vh;
 }
 
+@media (max-width: 640px) {
+  .modal-shell {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
 .scroll-area{
-  height: 400px;
+  flex: 1;
   min-height: 0;
+  max-height: min(400px, 40vh);
   overflow-y: auto;
   scrollbar-gutter: stable both-edges;
 }
 
 .nice-scroll {
-  height: 500px;
+  flex: 1;
   min-height: 0;
+  max-height: min(500px, 50vh);
   overflow-y: auto;
   scrollbar-gutter: stable both-edges;
 }

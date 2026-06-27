@@ -39,6 +39,9 @@ class ProcesarReporteController extends Controller
             'idcliente' => 'required|string',
             'incidentes' => 'required|numeric',
             'comentario' => 'nullable|string|max:80',
+            'firma' => 'nullable|string',
+            'lat' => 'nullable|numeric',
+            'long' => 'nullable|numeric',
             'muestras' => 'array',
             'rfv_id' => 'required|string',
             'visita_temporal_id' => 'nullable|numeric|exists:t_tmp_planificadores,Id',
@@ -136,6 +139,9 @@ class ProcesarReporteController extends Controller
                                 'idtipo_incidentes' => $request->input('incidentes'),
                                 'fecha_actividad' => $date,
                                 'observaciones_cliente' => $request->input('comentario'),
+                                'Firma_cliente' => $request->input('firma'),
+                                'coordenadas_l' => $request->input('lat'),
+                                'coordenadas_a' => $request->input('long'),
                                 'idestatus' => '1'
                             ]);
 

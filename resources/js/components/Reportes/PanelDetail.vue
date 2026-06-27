@@ -402,6 +402,6 @@ const formatDateTime = (dateString: string) => {
 
 .dark .firma-container {
   border-color: #374151;
-  background: #1f2937;
+  background: white;
 }
 </style>
