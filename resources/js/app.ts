@@ -47,16 +47,11 @@ createInertiaApp({
 
 initializeTheme()
 
-// Registrar Service Workers
+// Registrar Service Worker unificado (Workbox + push notifications)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // SW de push notifications (scope /)
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
-      console.warn('Push SW registration failed:', error)
-    })
-    // SW de Workbox con scope raíz para cache de páginas offline
     navigator.serviceWorker.register('/offline-sw.js', { scope: '/' }).catch((error) => {
-      console.warn('Workbox SW registration failed:', error)
+      console.warn('SW registration failed:', error)
     })
   })
 }

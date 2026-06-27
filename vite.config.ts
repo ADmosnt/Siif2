@@ -25,6 +25,7 @@ export default defineConfig({
             manifest: false,
             includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
             workbox: {
+                importScripts: ['/push-handlers.js'],
                 globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
                 navigateFallback: null,
                 runtimeCaching: [
