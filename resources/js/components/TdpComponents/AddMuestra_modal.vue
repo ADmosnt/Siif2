@@ -35,13 +35,13 @@ const leftData = computed(() =>
 
 const columnsProducto = [
   { key: 'codigo',   label: 'Codigo',   className: 'px-4 py-2 whitespace-nowrap text-left' },
-  { key: 'producto', label: 'Producto', className: 'px-4 py-2 whitespace-nowrap text-left' },
+  { key: 'producto', label: 'Producto', className: 'px-4 py-2 text-left max-w-[200px] truncate' },
   { key: 'lote',     label: 'Lote',     className: 'px-4 py-2 whitespace-nowrap text-left' },
-] 
+]
 
 const newReporTableheader = [
   { key: 'codigo',   label: 'Codigo',   className: 'px-4 py-2 whitespace-nowrap text-left' },
-  { key: 'producto', label: 'Producto', className: 'px-4 py-2 whitespace-nowrap text-left' },
+  { key: 'producto', label: 'Producto', className: 'px-4 py-2 text-left max-w-[200px] truncate' },
   { key: 'unidades', label: 'Unidades', cellComponent: vueNumberInput, cellProps: { size: 'small',min: 1 ,inline: true,center: true,controls: true} },
   { key: 'lote',     label: 'Lote',     className: 'px-4 py-2 whitespace-nowrap text-left' },
 ]

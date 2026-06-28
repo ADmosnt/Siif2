@@ -27,14 +27,21 @@ function resizeCanvas() {
 
   const data = signaturePad?.toData()
   const ratio = Math.max(window.devicePixelRatio || 1, 1)
-  const containerWidth = container.clientWidth
-  const canvasWidth = Math.min(containerWidth, props.width)
+  const canvasWidth = container.clientWidth
+  const canvasHeight = props.height
+
   canvas.width = canvasWidth * ratio
-  canvas.height = props.height * ratio
+  canvas.height = canvasHeight * ratio
   canvas.style.width = `${canvasWidth}px`
-  canvas.style.height = `${props.height}px`
+  canvas.style.height = `${canvasHeight}px`
+
   const ctx = canvas.getContext('2d')
-  if (ctx) ctx.scale(ratio, ratio)
+  if (ctx) {
+    ctx.scale(ratio, ratio)
+    // Re-fill white background after resize
+    ctx.fillStyle = 'rgb(255, 255, 255)'
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+  }
 
   if (data && data.length > 0) {
     signaturePad?.fromData(data)
@@ -91,7 +98,7 @@ defineExpose({ clear, getSignatureData })
     >
       <canvas
         ref="canvasRef"
-        class="touch-none cursor-crosshair"
+        class="block w-full touch-none cursor-crosshair"
         :class="{ 'pointer-events-none opacity-50': disabled }"
       />
     </div>

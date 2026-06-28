@@ -278,7 +278,7 @@ if (idx !== -1) {
 // Definición de columnas de la tabla
 const newReporTableheader = [
 { key: 'codigo', label: 'Código', className: 'px-4 py-2 whitespace-nowrap text-left' },
-{ key: 'producto', label: 'Producto', className: 'px-4 py-2 whitespace-nowrap text-left' },
+{ key: 'producto', label: 'Producto', className: 'px-4 py-2 text-left max-w-[200px] truncate' },
 { key: 'unidades', label: 'Unidades', className: 'px-4 py-2 whitespace-nowrap text-left' },
 { key: 'lote', label: 'Lote', className: 'px-4 py-2 whitespace-nowrap text-left' },
 ];

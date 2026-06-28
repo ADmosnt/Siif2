@@ -38,7 +38,7 @@ const columnsMayoristas = [
 const columnsProductos = [
   { key: 'id',                  label: 'Nº Orden',        className: 'px-4 py-2 whitespace-nowrap text-left' },
   { key: 'codigo',                 label: 'Código',          className: 'px-4 py-2 whitespace-nowrap text-left' },
-  { key: 'producto',          label: 'Producto',        className: 'px-4 py-2 whitespace-nowrap text-left' },
+  { key: 'producto',          label: 'Producto',        className: 'px-4 py-2 text-left max-w-[200px] truncate' },
   { key: 'unidades',    label: 'Unidades',        className: 'px-4 py-2 whitespace-nowrap text-right'},
   { key: 'precio',       label: 'Precio',          className: 'px-4 py-2 whitespace-nowrap text-right' },
 ]

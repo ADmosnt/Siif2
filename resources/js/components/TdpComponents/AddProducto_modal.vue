@@ -31,14 +31,14 @@ const search = ref('')
 // Columnas para la tabla de productos disponibles
 const columnsProducto = [
   { key: 'codigo',          label: 'Codigo',      className: 'px-4 py-2 whitespace-nowrap text-left' },
-  { key: 'producto',        label: 'Producto',    className: 'px-4 py-2 whitespace-nowrap text-left' },
+  { key: 'producto',        label: 'Producto',    className: 'px-4 py-2 text-left max-w-[200px] truncate' },
   { key: 'precio',          label: 'Precio',      className: 'px-4 py-2 whitespace-nowrap text-left' },
 ]
 
 // Columnas para la tabla del carrito
 const columnsCarrito = [
   { key: 'codigo',          label: 'Codigo',      className: 'px-4 py-2 whitespace-nowrap text-left' },
-  { key: 'producto',        label: 'Producto',    className: 'px-4 py-2 whitespace-nowrap text-left' },
+  { key: 'producto',        label: 'Producto',    className: 'px-4 py-2 text-left max-w-[200px] truncate' },
   { key: 'unidades',        label: 'Unidades',    cellComponent: vueNumberInput, cellProps: { size: 'small', min: 1, inline: true, center: true, controls: true } },
   { key: 'precio',          label: 'Precio',      className: 'px-4 py-2 whitespace-nowrap text-left' },
 ]
