@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\PersonaAdminController;
 use App\Http\Controllers\Admin\ProductoAdminController;
 use App\Http\Controllers\OptionsController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\Consultas\ConsultaReporteController;
 
 // ================================
 // 1. RUTA DE AUTENTICACIÓN Y CSRF
@@ -96,7 +97,7 @@ Route::middleware(['auth',])->group(function () {
     Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
     Route::get('/nuevo-reporte', [ReporteController::class, 'index'])->name('nuevo-reporte.index');
     Route::get('/reporte-agenda', fn() => Inertia::render('RTR/ReporteAgenda'))->name('ReporteAgenda');
-    Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
+    Route::get('/consulta-reporte', [ConsultaReporteController::class, 'index'])->name('ConsultaReporte');
 
     // --- LISTA DE CLIENTES ---
     Route::get('/agenda', [AgendaController::class, 'index'])->name('rtr.lista-clientes');
@@ -152,7 +153,6 @@ Route::middleware(['auth',])->group(function () {
     // --- PUSH SUBSCRIPTIONS (web, autenticadas con sesión) ---
     Route::post('/push/subscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'store'])->name('push.subscribe');
     Route::post('/push/unsubscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
-    Route::get('/consulta-reporte', fn() => Inertia::render('ConsultaReportes'))->name('ConsultaReporte');
     Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
     Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
     Route::get('/Contacto', fn() => Inertia::render('Contacto'))->name('Contacto');
