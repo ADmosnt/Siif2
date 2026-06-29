@@ -59,7 +59,6 @@ function hasOfflineChildren(item: { items?: { url: string }[] }): boolean {
           >
             <a
               :href="isDisabled(item.url) && !item.items ? undefined : item.url"
-              @click.prevent="isDisabled(item.url) && !item.items ? undefined : undefined"
             >
               <component :is="item.icon" />
               <span>{{ item.title }}</span>
