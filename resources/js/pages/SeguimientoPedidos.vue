@@ -68,6 +68,13 @@ const rightPanelConfig = {
 async function fetchData() {
   if (!estatusLoaded.value || !rfvsLoaded.value) return
 
+  if (!fechaInicio.value || !fechaFin.value) {
+    ordenes.value = []
+    selectedOrden.value = null
+    loading.value = false
+    return
+  }
+
   loading.value = true
   try {
     const params: any = {

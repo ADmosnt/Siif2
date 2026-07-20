@@ -5,7 +5,6 @@ namespace App\Http\Controllers\ListaReportes;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\GetListaReporteRequet;
 use App\Services\ListaReporteService;
-use App\Services\AccessControlService;
 use App\Services\RepresentanteClienteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +13,6 @@ class ListaReporteController extends Controller
 {
     public function __construct(
         protected ListaReporteService $reportService,
-        protected AccessControlService $accessControl
     ) {}
 
     /**
@@ -22,10 +20,6 @@ class ListaReporteController extends Controller
      */
     public function getReports(GetListaReporteRequet $request): JsonResponse
     {
-        // 1. Validar acceso: Solo roles autorizados
-        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP', 'RFV'])) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
 
         $perpage = $request->input('size', 15);
         $page = $request->input('page', 1);

@@ -142,6 +142,13 @@ const accionesRapidas = [
   }
 ]
 
+const accionesRapidasVisibles = computed(() => {
+  if (props.usuario.idgrupo_persona === 'RFV') {
+    return accionesRapidas.filter(accion => !['CONSULTA GERENCIAL', 'CONCILIAR', 'MONITOR'].includes(accion.label));
+  }
+  return accionesRapidas;
+});
+
 </script>
 
 <template>
@@ -192,7 +199,7 @@ const accionesRapidas = [
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 p-6 bg-gray-50 dark:bg-gray-800 rounded-b-lg border border-t-0 border-gray-200 dark:border-gray-700 transition-colors duration-200">
           <ActionCard
-            v-for="(accion, index) in accionesRapidas"
+            v-for="(accion, index) in accionesRapidasVisibles"
             :key="index"
             :icon="accion.icon"
             :label="accion.label"

@@ -2,8 +2,8 @@
 
 //app/Http/Controllers/Agenda/TmpPlanificadorController.php
 /*
-En este controlador se reutiliza el servicio de reporteDataService para obtener listas de actividades, eventos y productos.
-porque al reutilizar la vista de NuevoReporte, se necesita esa información para llenar los selects correspondientes.
+ E *n este controlador se reutiliza el servicio de reporteDataService para obtener listas de actividades, eventos y productos.
+ porque al reutilizar la vista de NuevoReporte, se necesita esa información para llenar los selects correspondientes.
  */
 namespace App\Http\Controllers\Agenda;
 
@@ -38,7 +38,7 @@ class TmpPlanificadorController extends Controller
     {
         if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP', 'RFV'])) {
             $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
-            
+
             return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
         }
         return Inertia::render('RTR/Calendario', [
@@ -50,36 +50,36 @@ class TmpPlanificadorController extends Controller
      * Obtiene eventos para el calendario
      */
     public function getEventosParaCalendario(Request $request): JsonResponse
-        {
-            try{
+    {
+        try{
             return response()->json($this->tmpPlanificadorService->getEventosParaCalendario($request));
-        
-            } catch (\Exception $e) {
-                $statusCode = $e->getCode() === 403 || $e->getCode() === 404 ? $e->getCode() : 500;
-                return response()->json([
-                    'message' => $e->getMessage()
-                ], $statusCode);
-            }
+
+        } catch (\Exception $e) {
+            $statusCode = $e->getCode() === 403 || $e->getCode() === 404 ? $e->getCode() : 500;
+            return response()->json([
+                'message' => $e->getMessage()
+            ], $statusCode);
         }
+    }
 
     /**
      * Almacena una nueva visita temporal
      */
     public function store(Request $request): JsonResponse
-        {
-            try{
+    {
+        try{
             $nuevaVisita = $this->tmpPlanificadorService->crearVisitaTemporal($request->all());
             return response()->json([
-                'message' => 'Creada', 
+                'message' => 'Creada',
                 'data' => $nuevaVisita
-                ], 201);
-            } catch (\Exception $e) {
-                $statusCode = $e->getCode() === 403 || $e->getCode() === 404 ? $e->getCode() : 500;
-                return response()->json([
-                    'message' => $e->getMessage()
-                ], $statusCode);
-            }
+            ], 201);
+        } catch (\Exception $e) {
+            $statusCode = $e->getCode() === 403 || $e->getCode() === 404 ? $e->getCode() : 500;
+            return response()->json([
+                'message' => $e->getMessage()
+            ], $statusCode);
         }
+    }
 
     /**
      * Actualiza una visita temporal
@@ -137,13 +137,13 @@ class TmpPlanificadorController extends Controller
         } catch (\Exception $e) {
             Log::error('Error cargando vista NuevoReporte para procesar visita temporal:', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'id_visita_temporal' => $idVisitaTemporal,
-                'params' => $request->all()
+                       'trace' => $e->getTraceAsString(),
+                       'id_visita_temporal' => $idVisitaTemporal,
+                       'params' => $request->all()
             ]);
 
             $statusCode = $e->getCode() === 403 || $e->getCode() === 404 ? $e->getCode() : 500;
-            
+
             return Inertia::render('Error', [
                 'message' => $e->getMessage() ?: 'Ocurrió un error al cargar la vista para procesar la visita.'
             ]);
@@ -160,18 +160,18 @@ class TmpPlanificadorController extends Controller
 
             // Esto devuelve solo RFVs, no GRTs
             $representantes = $this->representanteClienteService->getRepresentantesData($request);
-            
+
             return response()->json($representantes->map(fn($r) => [
-                        'value' => $r['id'],
-                        'label' => $r['nombre']
+                'value' => $r['id'],
+                'label' => $r['nombre']
             ]));
-            
+
         } catch (\Exception $e) {
             Log::error('Error obteniendo RFVs disponibles:', [
                 'message' => $e->getMessage(),
-                'user_id' => Auth::id()
+                       'user_id' => Auth::id()
             ]);
-            
+
             return response()->json(['error' => 'Error interno del servidor'], 500);
         }
     }
@@ -206,8 +206,8 @@ class TmpPlanificadorController extends Controller
                 'errores' => $errores,
                 'failures' => collect($failures)->map(fn($f) => [
                     'row' => $f->row(),
-                    'attribute' => $f->attribute(),
-                    'errors' => $f->errors(),
+                                                      'attribute' => $f->attribute(),
+                                                      'errors' => $f->errors(),
                 ])->toArray(),
             ], $importados > 0 ? 200 : 422);
         } catch (\Exception $e) {
@@ -223,16 +223,16 @@ class TmpPlanificadorController extends Controller
     {
         try {
 
-$request->merge(['idRfv' => $rfvId]);
-        return response()->json($this->representanteClienteService->searchClientesData($request));
-            
+            $request->merge(['idRfv' => $rfvId]);
+            return response()->json($this->representanteClienteService->searchClientesData($request));
+
         } catch (\Exception $e) {
             Log::error('Error obteniendo clientes por RFV:', [
                 'message' => $e->getMessage(),
-                'rfv_id' => $rfvId,
-                'user_id' => Auth::id()
+                       'rfv_id' => $rfvId,
+                       'user_id' => Auth::id()
             ]);
-            
+
             return response()->json([], 500);
         }
     }

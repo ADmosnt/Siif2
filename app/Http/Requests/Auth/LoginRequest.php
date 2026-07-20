@@ -55,6 +55,7 @@ class LoginRequest extends FormRequest
             $user = Auth::user();
 
             if ($user) {
+                
                 if ($user->idestatus == 0) {
                     Auth::logout();
                     throw ValidationException::withMessages([

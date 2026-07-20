@@ -26,6 +26,7 @@ const data = {
     {
       title: 'Consultas - Reportes',
       url: '/consulta-reporte',
+      
       icon: FileLinesIcon,
     },
     {

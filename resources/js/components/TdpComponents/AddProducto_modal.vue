@@ -54,7 +54,7 @@ const productosPagination = computed(() => ({
 // --- Paginación del Carrito (Local) ---
 const carritoPagination = ref({
   page: 1,
-  pageSize: '15' // Usamos string, lo convertimos con parseInt
+  pageSize: '15'
 });
 
 const carritoPaginado = computed(() => {
@@ -153,7 +153,6 @@ watch(carrito, (newCarrito) => {
                 :total-records="productosPagination.totalRecords"
                 :current-page="productosPagination.page"
                 :page-size="productosPagination.pageSize"
-                :links="productosPagination.links"
                 :actions="[{ key: 'add', handler: agregarAlCarrito }]"
                 autoAddActionsColumn
                 :loading="loading"

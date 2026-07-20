@@ -52,7 +52,6 @@ class NotificacionWebController extends Controller
             ->orderBy('fecha_registro', 'desc');
 
         if ($user->idgrupo_persona === 'RFV') {
-            // RFV solo ve las que le enviaron a él o las de su fabricante (sin destino específico)
             $notificacionesQuery->where(function ($q) use ($user) {
                 $q->where('idPersona', $user->idPersona)
                   ->orWhere(function ($q2) use ($user) {
@@ -61,10 +60,8 @@ class NotificacionWebController extends Controller
                   });
             });
         } elseif (in_array($user->idgrupo_persona, ['GRT', 'SUP'])) {
-            // GRT/SUP ven las de su fabricante
             $notificacionesQuery->where('idFabricante', $user->idFabricante);
         } elseif ($user->idgrupo_persona === 'SIIF') {
-            // SIIF: si tiene empresa seleccionada, filtra; si no, ve todas
             if ($activeFabricante) {
                 $notificacionesQuery->where('idFabricante', $activeFabricante);
             }

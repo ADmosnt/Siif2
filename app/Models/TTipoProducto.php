@@ -19,9 +19,9 @@ use App\Models\Scopes\OperadorFabricante;
  */
 class TTipoProducto extends Eloquent
 {
-	
+	protected $table = 't_tipo_productos';
 	protected $primaryKey = 'idtipo_producto';
-	public $incrementing = false;
+	public $incrementing = true;
 	public $timestamps = false;
 
 	protected $fillable = [

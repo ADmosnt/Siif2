@@ -89,7 +89,7 @@ class AgendaService
             $rfv = TPersona::find($idRfv);
 
 
-            
+
             // Obtener días hábiles del ciclo del RFV
             if ($rfv && $rfv->idciclos) {
                 $cicloData = TCiclo::withoutGlobalScopes()->find($rfv->idciclos);
@@ -107,12 +107,12 @@ class AgendaService
             foreach ($clientes as $cliente) {
                 // Contar visitas realizadas
                 $visitasRealizadas = TPlanificadore::withoutGlobalScopes()
-                    ->where([
-                        'idRFV' => $idRfv,
-                        'idCliente' => $cliente->idPersona,
-                        'idestatus' => 2
-                    ])
-                    ->count();
+                ->where([
+                    'idRFV' => $idRfv,
+                    'idCliente' => $cliente->idPersona,
+                    'idestatus' => 2
+                ])
+                ->count();
 
                 if ($visitasRealizadas > 0) {
                     $visitados++;
@@ -155,7 +155,7 @@ class AgendaService
         } catch (\Exception $e) {
             Log::error('Error calculando estadísticas:', [
                 'message' => $e->getMessage(),
-                'idRfv' => $idRfv
+                       'idRfv' => $idRfv
             ]);
             return $this->estadisticasVacias();
         }
@@ -177,12 +177,12 @@ class AgendaService
         }
 
         return $query
-            ->orderBy('t_personas.nombre_completo_razon_social')
-            ->paginate($size, ['*'], 'page', $page)
-            ->withQueryString()
-            ->through(function ($cliente) use ($idRfv) {
-                return $this->formatearCliente($cliente, $idRfv);
-            });
+        ->orderBy('t_personas.nombre_completo_razon_social')
+        ->paginate($size, ['*'], 'page', $page)
+        ->withQueryString()
+        ->through(function ($cliente) use ($idRfv) {
+            return $this->formatearCliente($cliente, $idRfv);
+        });
     }
 
     /**
@@ -228,25 +228,25 @@ class AgendaService
      * Obtiene datos para exportar a Excel (sin paginación)
      */
     public function obtenerDatosParaExcel(Request $request, ?string $idRfv = null): array
-        {
-            $idRfv = $idRfv ?? $request->input('idRfv');
-            if (!$idRfv || !$this->representanteService->tienePermisosRfv($idRfv)) return [];
+    {
+        $idRfv = $idRfv ?? $request->input('idRfv');
+        if (!$idRfv || !$this->representanteService->tienePermisosRfv($idRfv)) return [];
 
-            $query = $this->obtenerClientesQuery($idRfv);
-            if ($request->filled('idCliente')) {
-                $query->where('t_personas.idPersona', $request->idCliente);
-            }
-
-            return $query->get()->map(fn($c) => $this->formatearParaExcel($c, $idRfv))->toArray();
+        $query = $this->obtenerClientesQuery($idRfv);
+        if ($request->filled('idCliente')) {
+            $query->where('t_personas.idPersona', $request->idCliente);
         }
+
+        return $query->get()->map(fn($c) => $this->formatearParaExcel($c, $idRfv))->toArray();
+    }
 
     public function obtenerDatosGeneralesEmpresa(string $idFabricante): array
     {
         try {
             $rfvs = TPersona::withoutGlobalScopes()
-                ->where('idgrupo_persona', 'RFV')
-                ->where('idFabricante', $idFabricante)
-                ->get(['idPersona', 'nombre_completo_razon_social']);
+            ->where('idgrupo_persona', 'RFV')
+            ->where('idFabricante', $idFabricante)
+            ->get(['idPersona', 'nombre_completo_razon_social']);
 
             $datosTotales = [];
 
@@ -288,8 +288,8 @@ class AgendaService
     {
         $user = Auth::user();
         $cliente->load(['Dias', 'Horarios']);
-        
-        // Obtener el ID del RFV 
+
+        // Obtener el ID del RFV
         $nombreRfv = $idRfv;
 
         // Obtener ranking
@@ -297,7 +297,7 @@ class AgendaService
         if ($cliente->idranking) {
             $ranking = TRankingCliente::withoutGlobalScopes()->find($cliente->idranking);
         }
-        
+
         // Obtener actividad
         $actividad = null;
         if ($cliente->idactividad_negocio) {
@@ -316,12 +316,12 @@ class AgendaService
 
         // Contar visitas realizadas
         $visitasRealizadas = TPlanificadore::withoutGlobalScopes()
-            ->where([
-                'idRFV' => $idRfv,
-                'idCliente' => $cliente->idPersona,
-                'idestatus' => 2
-            ])
-            ->count();
+        ->where([
+            'idRFV' => $idRfv,
+            'idCliente' => $cliente->idPersona,
+            'idestatus' => 2
+        ])
+        ->count();
 
         // Obtener días de visita
         $diasVisita = $cliente->Dias->map(function ($dia) {
@@ -365,10 +365,10 @@ class AgendaService
         try {
             // Obtener IDs de todos los RFVs de la empresa sin filtros globales
             $rfvs = TPersona::withoutGlobalScopes()
-                ->where('idgrupo_persona', 'RFV') 
-                ->where('idFabricante', $idFabricante)
-                ->pluck('idPersona')
-                ->toArray();
+            ->where('idgrupo_persona', 'RFV')
+            ->where('idFabricante', $idFabricante)
+            ->pluck('idPersona')
+            ->toArray();
 
             if (empty($rfvs)) {
                 Log::warning("No se encontraron RFVs para el fabricante: $idFabricante");
@@ -388,8 +388,8 @@ class AgendaService
 
             // Consultar datos de los clientes (Frecuencias)
             $clientesData = TPersona::withoutGlobalScopes()
-                ->whereIn('idPersona', $clientesIds)
-                ->get(['idPersona', 'idfrecuencia']);
+            ->whereIn('idPersona', $clientesIds)
+            ->get(['idPersona', 'idfrecuencia']);
 
             foreach ($clientesData as $cliente) {
                 // Sumar frecuencia esperada
@@ -405,11 +405,11 @@ class AgendaService
 
             // Contar visitas reales realizadas por este grupo de RFVs en este ciclo
             $visitadosTotal = TPlanificadore::withoutGlobalScopes()
-                ->whereIn('idRFV', $rfvs)
-                ->whereIn('idCliente', $clientesIds)
-                ->where('idestatus', 2)
-                ->distinct('idCliente') // clientes visitados, no total de visitas
-                ->count('idCliente');
+            ->whereIn('idRFV', $rfvs)
+            ->whereIn('idCliente', $clientesIds)
+            ->where('idestatus', 2)
+            ->distinct('idCliente') // clientes visitados, no total de visitas
+            ->count('idCliente');
 
             // Cálculos finales
             $cobertura = ($totalClientesUnicos > 0) ? (($visitadosTotal / $totalClientesUnicos) * 100) : 0;
@@ -436,31 +436,30 @@ class AgendaService
         $size = $request->input('size', 15);
         $page = $request->input('page', 1);
         $rfvs = TPersona::withoutGlobalScopes()
-            ->where('idgrupo_persona', 'RFV')
-            ->where('idFabricante', $idFabricante)
-            ->pluck('idPersona')
-            ->toArray();
+        ->where('idgrupo_persona', 'RFV')
+        ->where('idFabricante', $idFabricante)
+        ->pluck('idPersona')
+        ->toArray();
 
         $query = TPersona::withoutGlobalScopes()
-            ->whereHas('clientesRfv', function ($q) use ($rfvs) {
-                $q->whereIn('id_RFV', $rfvs);
-            })
-            ->whereNotNull('nombre_completo_razon_social');
+        ->whereHas('clientesRfv', function ($q) use ($rfvs) {
+            $q->whereIn('id_RFV', $rfvs);
+        })
+        ->whereNotNull('nombre_completo_razon_social');
 
         if ($idCliente) {
             $query->where('idPersona', $idCliente);
         }
 
         return $query->orderBy('nombre_completo_razon_social')
-            ->paginate($size, ['*'], 'page', $page)
-            ->withQueryString()
-            ->through(function ($cliente) use ($rfvs) {
-                // Buscamos el RFV para el formateo
-                $relacion = RClienteRfv::where('id_cliente', $cliente->idPersona)
-                    ->whereIn('id_RFV', $rfvs)
-                    ->first();
-                return $this->formatearCliente($cliente, $relacion->id_RFV ?? $rfvs[0]);
-            });
+        ->paginate($size, ['*'], 'page', $page)
+        ->withQueryString()
+        ->through(function ($cliente) use ($rfvs) {
+            // Buscamos el RFV para el formateo
+            $relacion = RClienteRfv::where('id_cliente', $cliente->idPersona)
+            ->whereIn('id_RFV', $rfvs)
+            ->first();
+            return $this->formatearCliente($cliente, $relacion->id_RFV ?? $rfvs[0]);
+        });
     }
 }
-

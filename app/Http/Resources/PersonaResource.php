@@ -1,5 +1,5 @@
 <?php
-
+//app/Http/Resources/PersonaResource.php
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -11,48 +11,59 @@ class PersonaResource extends JsonResource
      *
      * @return array<string, mixed>
      */
-    public function toArray($request): array
-    {
         //Y esta informacón se muestra en la tabla principal de cada modulo de administrar personas (Clientes, Representantes, Mayoristas, etc.)
         //tal vez se use en otro lado pero no tengo ni idea
-        $ubicacionFallback = $this->ciudad?->nombreCiudad ?? 'Sin dirección';
-        $telefonoFallback = $this->movil_persona ?? 'Sin teléfono';
-        return [
-            'id'                => $this->idPersona,
-            'nombre_completo'   => $this->nombre_completo_razon_social,
-            'nombre'            => $this->nombre_persona,
-            'apellido'          => $this->apellido_persona,
-            'email'             => $this->email ?? 'Sin email',
-            'grupo'             => $this->idgrupo_persona,
-            'telefono'          => $this->telefono_persona ?? $telefonoFallback,
-            'direccion'         => $this->direccion_domicilio ?? $ubicacionFallback,
-            'es_cliente'        => $this->esCliente(),
-            'descuento_especial'=> $this->when($this->esMayorista(), $this->descuento), 
-            'created_at'        => $this->fecha_nacimiento_registro,
-            'documento' => $this->documento_identidad ?? 'Sin documento',
-            'estatus' => $this->idestatus == 1 ? 'Activo' : 'Inactivo',
-            'idFabricante' => $this->idFabricante,
 
-            'metadata' => [
-                'nombre'            => $this->nombre_persona,
-                'apellido'          => $this->apellido_persona,
-                'tipo_doc'   => $this->cod_tipo_persona,
-                'documento' => $this->documento_identidad ?? 'Sin documento',
-                'telefono'          => $this->telefono_persona ?? $telefonoFallback,
-                'direccion'         => $this->direccion_domicilio ?? $ubicacionFallback,
-                'genero' => $this->sexo_genero_persona,
-                'especialidad'      => $this->idespecialidad,
-                'clase'     => $this->idclase_persona,
-                'ranking'           => $this->idranking,
-                'frecuencia'        => $this->idfrecuencia,
-                'ciclo'             => $this->idciclos,
-                'pais'              => $this->idpais,
-                'estado'            => $this->idestado,
-                'ciudad'            => $this->idciudad,
-                'supervisor'        => $this->idsupervisor,
-                'username'          => $this->name,
-                'descuento'         => $this->descuento ?? 0,
-            ],
-        ];
+    public function toArray($request): array
+    {
+    $telefonoFallback = 'Sin teléfono';
+    $ubicacionFallback = 'Dirección no especificada';
+    
+    // Detectamos el rol para las condicionales (funciona con Objeto o Array)
+    $grupo = data_get($this, 'idgrupo_persona');
+    $esMayorista = ($grupo === 'MAY');
+    $esCliente = ($grupo === 'CLI');
+
+    return [
+        'id'                => data_get($this, 'idPersona') ?? data_get($this, 'id_cliente'),
+        'nombre_completo'   => data_get($this, 'nombre_completo_razon_social'),
+        'nombre'            => data_get($this, 'nombre_persona'),
+        'apellido'          => data_get($this, 'apellido_persona'),
+        'email'             => data_get($this, 'email') ?? 'Sin email',
+        'grupo'             => $grupo,
+        'telefono'          => data_get($this, 'telefono_persona') ?? $telefonoFallback,
+        'direccion'         => data_get($this, 'direccion_domicilio') ?? $ubicacionFallback,
+        'es_cliente'        => $esCliente,
+        
+        // El 'when' de Laravel funciona mejor así con data_get
+        'descuento_especial'=> $esMayorista ? data_get($this, 'descuento') : null, 
+        
+        'created_at'        => data_get($this, 'fecha_nacimiento_registro'),
+        'documento'         => data_get($this, 'documento_identidad') ?? 'Sin documento',
+        'estatus'           => data_get($this, 'idestatus') == 1 ? 'Activo' : 'Inactivo',
+        'idFabricante'      => data_get($this, 'idFabricante'),
+
+        // Información para Modales de Vue
+        'metadata' => [
+            'nombre'            => data_get($this, 'nombre_persona'),
+            'apellido'          => data_get($this, 'apellido_persona'),
+            'tipo_doc'          => data_get($this, 'cod_tipo_persona'),
+            'documento'         => data_get($this, 'documento_identidad') ?? 'Sin documento',
+            'telefono'          => data_get($this, 'telefono_persona') ?? $telefonoFallback,
+            'direccion'         => data_get($this, 'direccion_domicilio') ?? $ubicacionFallback,
+            'genero'            => data_get($this, 'sexo_genero_persona'),
+            'especialidad'      => data_get($this, 'idespecialidad'),
+            'clase'             => data_get($this, 'idclase_persona'),
+            'ranking'           => data_get($this, 'idranking'),
+            'frecuencia'        => data_get($this, 'idfrecuencia'),
+            'ciclo'             => data_get($this, 'idciclos'),
+            'pais'              => data_get($this, 'idpais'),
+            'estado'            => data_get($this, 'idestado'),
+            'ciudad'            => data_get($this, 'idciudad'),
+            'supervisor'        => data_get($this, 'idsupervisor'),
+            'username'          => data_get($this, 'name'),
+            'descuento'         => data_get($this, 'descuento') ?? 0,
+        ],
+    ];
     }
 }

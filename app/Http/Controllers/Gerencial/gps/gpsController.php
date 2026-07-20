@@ -19,10 +19,8 @@ class gpsController extends Controller
 
         $datos = $request->validated();
 
-        $fechaDesde = Carbon::parse($datos['fechaDesde']);
-        $fechaHasta = Carbon::parse($datos['fechaHasta']);
-        $desde = min($fechaDesde, $fechaHasta)->startOfDay();
-        $hasta = max($fechaDesde, $fechaHasta)->endOfDay();
+        $desde = Carbon::parse($datos['fechaDesde'])->startOfDay();
+        $hasta = Carbon::parse($datos['fechaHasta'])->endOfDay();
 
         $actividades = TActividadesRepresentante::with([
             'cliente:idPersona,nombre_completo_razon_social,idespecialidad',
@@ -56,7 +54,7 @@ class gpsController extends Controller
             'totalVisitas' => $actividades->count()
         ]);
 
-        Log:: info('datos vainas gps' , [
+        Log:: info('datos gps' , [
             'ruta' => ActividadGpsResource::collection($actividades),
             'leyenda' => $leyenda,
             'totalVisitas' => $actividades->count()

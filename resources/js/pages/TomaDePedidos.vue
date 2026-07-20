@@ -57,7 +57,7 @@ const {
 const descripcion = ref('');
 const keyTables = ref(0);
 const maxChars = 256;
-const tax = ref(16);
+const tax = ref(0);
 
 // datos paginados
 const representantes = computed(() => {

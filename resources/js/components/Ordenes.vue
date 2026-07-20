@@ -1,145 +1,152 @@
-/*
-  Nombre: Ordenes
-  Proceso: Componente que activa el boton de ordenes en el modulo de consulta - reporte,
-            ademas de que tiene dos tablas de datos, una para reportes de ordenes y otra para estadisticas de productos
-  Fecha creado: 25 de junio del 2025
-  Quien lo hizo: Bimodal - A.Lozada
-  Ultima Modificacion:
-  Ultima Modificacion por: 
-*/
-
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import GlobalTable from '@/components/GlobalTable.vue'
-import FiltroOrdenes from './FiltroOrdenes.vue'
 
-// Interfaz de datos para representar filas de reportes
-interface Orden {
-  id: number
-  numeroFactura: string
-  rfv: string
-  cliente: string
-  fecha: string
-  ciudad: string
-  estado: string
-  mayorista: string
-  unidades: number
-  valor: number
-  estatus: string
-  comentarios: string
-  coordenadas: string
-}
-interface RowProducto {
-  id: number
-  rfv: string
-  cliente: string
-  producto: string
-  mayorista: string
-  solicitado: number
-  montoSolicitado: number
-  conciliadas: number
-  montoConciliado: number
-  fallas: number
-  montoFalla: number
+interface Producto {
+  Cliente:          string
+  Orden:            string | number
+  Nombre:           string
+  Mayorista:        string | null
+  Solicitado:       number
+  Monto_Solicitado: number
+  Faltante:         number
+  Monto_Faltante:   number
+  Conciliado:       number
+  Monto_Conciliado: number
+  RFV:              string
 }
 
-const rowsOrdenes = ref<Orden[]>([])
-const rowsProductos = ref<RowProducto[]>([])
+interface PaginatedOrdenes {
+  data:         any[]
+  total:        number
+  current_page: number
+  per_page:     number
+  last_page:    number
+}
 
-// === Reportes de Órdenes ===
+const props = defineProps<{
+  ordenes:   PaginatedOrdenes
+  productos: Producto[]
+  totalUnidades: number
+  montoTotal:    number
+  filtrosActivos: Record<string, any>  
+}>()
+
+const fmt = new Intl.NumberFormat('es-VE', {
+  minimumFractionDigits:  2,
+  maximumFractionDigits:  2,
+})
+
+const emit = defineEmits<{
+  'change-page': [page: number]
+  'change-page-size': [size: number]
+}>()
+
+// ─── Paginación local productos ───────────────────────────────────────────────
+const pageP        = ref(1)
+const pageSizeP    = ref(15)
+const totalP       = computed(() => props.productos.length)
+const lastPageP    = computed(() => Math.max(1, Math.ceil(totalP.value / pageSizeP.value)))
+const productosPage = computed(() => {
+  const start = (pageP.value - 1) * pageSizeP.value
+  return props.productos.slice(start, start + pageSizeP.value)
+})
+
+function onPageP(newPage: number) {
+  pageP.value = Math.min(Math.max(1, newPage), lastPageP.value)
+}
+
+function onPageSizeP(newSize: string) {
+  pageSizeP.value = parseInt(newSize, 10) || 15
+  pageP.value     = 1
+}
+
+function descargar(tabla: 'ordenes' | 'productos', tipo: 'excel' | 'pdf') {
+  const params = new URLSearchParams({ tabla, tipo })
+  Object.entries(props.filtrosActivos).forEach(([k, v]) => {
+    if (v !== null && v !== undefined) {
+      params.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v))
+    }
+  })
+  window.location.href = `/exportar/ordenes?${params}`
+}
+
+// ─── Columnas ─────────────────────────────────────────────────────────────────
 const columnsOrdenes = [
-  // esenciales en móvil
-  { key: 'numeroFactura', label: 'Nº Fact', className: 'px-3 py-2 text-left w-24' },
-  { key: 'cliente',       label: 'Cliente', className: 'px-3 py-2 text-left max-w-[180px] truncate' },
-  { key: 'fecha',         label: 'Fecha',   className: 'px-3 py-2 text-right w-28' },
-  { key: 'valor',         label: 'Valor',   className: 'px-3 py-2 text-right w-24' },
-
-  // se muestran desde ciertos breakpoints
-  { key: 'rfv',           label: 'RFV',        className: 'px-3 py-2 text-left hidden sm:table-cell' },
-  { key: 'ciudad',        label: 'Ciudad',     className: 'px-3 py-2 text-right hidden md:table-cell' },
-  { key: 'estado',        label: 'Estado',     className: 'px-3 py-2 text-right hidden lg:table-cell' },
-  { key: 'mayorista',     label: 'Mayorista',  className: 'px-3 py-2 text-right hidden xl:table-cell' },
-  { key: 'unidades',      label: 'Unidades',   className: 'px-3 py-2 text-right hidden sm:table-cell' },
-  { key: 'estatus',       label: 'Estatus',    className: 'px-3 py-2 text-right hidden md:table-cell' },
-  { key: 'comentarios',   label: 'Comentarios',className: 'px-3 py-2 text-right hidden xl:table-cell' },
-  { key: 'coordenadas',   label: 'Coordenadas',className: 'px-3 py-2 text-right hidden 2xl:table-cell' },
+  { key: 'nOrden',     label: 'Nº Orden',   className: 'px-3 py-2 text-left w-24' },
+  { key: 'rfv',    label: 'RFV',        className: 'px-3 py-2 text-left hidden sm:table-cell' },
+  { key: 'cliente',    label: 'Cliente',    className: 'px-3 py-2 text-left max-w-[180px] truncate' },
+  { key: 'fecha',      label: 'Fecha',      className: 'px-3 py-2 text-right w-28' },
+  { key: 'totalOrden', label: 'Total',      className: 'px-3 py-2 text-right w-28' },
+  { key: 'ciudad',     label: 'Ciudad',     className: 'px-3 py-2 text-right hidden md:table-cell' },
+  { key: 'estado',     label: 'Estado',     className: 'px-3 py-2 text-right hidden lg:table-cell' },
+  { key: 'mayoristas', label: 'Mayorista',  className: 'px-3 py-2 text-right hidden xl:table-cell' },
+  { key: 'unidades',   label: 'Unidades',   className: 'px-3 py-2 text-right hidden sm:table-cell' },
+  { key: 'estatus',    label: 'Estatus',    className: 'px-3 py-2 text-right hidden md:table-cell' },
+  { key: 'comentario', label: 'Comentario', className: 'px-3 py-2 text-right hidden xl:table-cell' },
+  { key: 'coordenadas_l',       label: 'Coord. Lat',   className: 'px-3 py-2 text-right hidden 2xl:table-cell' },
+  { key: 'coordenadas_a',       label: 'Coord. Lng',   className: 'px-3 py-2 text-right hidden 2xl:table-cell' },
 ]
 
-// === Estadísticas de Productos ===
 const columnsProductos = [
-  // esenciales en móvil
-  { key: 'producto',        label: 'Producto',         className: 'px-3 py-2 text-left max-w-[200px] truncate' },
-  { key: 'solicitado',      label: 'Solicitado',       className: 'px-3 py-2 text-right w-24' },
-  { key: 'montoSolicitado', label: 'Monto solicitado', className: 'px-3 py-2 text-right w-28' },
-
-  // se muestran desde ciertos breakpoints
-  { key: 'id',              label: 'Nº',               className: 'px-3 py-2 text-left hidden sm:table-cell w-14' },
-  { key: 'cliente',         label: 'Cliente',          className: 'px-3 py-2 text-left hidden sm:table-cell' },
-  { key: 'rfv',             label: 'RFV',              className: 'px-3 py-2 text-left hidden md:table-cell' },
-  { key: 'mayorista',       label: 'Mayorista',        className: 'px-3 py-2 text-left hidden lg:table-cell' },
-  { key: 'conciliadas',     label: 'Conciliadas',      className: 'px-3 py-2 text-right hidden sm:table-cell' },
-  { key: 'montoConciliado', label: 'Monto conciliado', className: 'px-3 py-2 text-right hidden md:table-cell' },
-  { key: 'fallas',          label: 'Fallas',           className: 'px-3 py-2 text-right hidden lg:table-cell' },
-  { key: 'montoFalla',      label: 'Monto Falla',      className: 'px-3 py-2 text-right hidden xl:table-cell' },
+  { key: 'Orden',            label: 'Nº Orden',         className: 'px-3 py-2 text-left hidden sm:table-cell w-20' },
+  { key: 'Cliente',          label: 'Cliente',          className: 'px-3 py-2 text-left hidden sm:table-cell' },
+  { key: 'RFV',              label: 'RFV',              className: 'px-3 py-2 text-left hidden md:table-cell' },
+  { key: 'Nombre',           label: 'Producto',        className: 'px-3 py-2 text-left max-w-[200px] truncate' },
+  { key: 'Solicitado',       label: 'Solicitado',       className: 'px-3 py-2 text-right w-24' },
+  { key: 'Monto_Solicitado', label: 'Total', className: 'px-3 py-2 text-right w-32' },
+  { key: 'Mayorista',        label: 'Mayorista',        className: 'px-3 py-2 text-left hidden lg:table-cell' },
+  { key: 'Conciliado',       label: 'Conciliado',       className: 'px-3 py-2 text-right hidden sm:table-cell' },
+  { key: 'Faltante',         label: 'Faltante',         className: 'px-3 py-2 text-right hidden lg:table-cell' },
 ]
-
-// Paginación para ambas tablas
-const pageA = ref(1)
-const pageSizeA = ref('15')
-const pageB = ref(1)
-const pageSizeB = ref('15')
-
-function downloadPdf() { /* tu lógica */ }
-function downloadExcel() { /* tu lógica */ }
-
-
-
 </script>
 
 <template>
-  <!-- Componente de filtros (estatus + mayorista) -->
-  <FiltroOrdenes  />
-
-  <!-- Tabla A: Reportes de Órdenes -->
-    <div class="rounded-b-lg shadow overflow-x-auto mb-6">
-    <h2 class="text-lg font-semibold px-4 py-2">Reportes de órdenes</h2>
+  <div class="mt-6">
+      <div class="flex flex-wrap gap-3 mb-3 px-1">
+    <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2">
+      <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Unidades totales:</span>
+      <span class="text-sm font-bold text-blue-900 dark:text-blue-100">
+        {{ totalUnidades.toLocaleString() }}
+      </span>
+    </div>
+    <div class="flex items-center gap-2 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg px-4 py-2">
+      <span class="text-sm font-medium text-green-700 dark:text-green-300">Monto total:</span>
+      <span class="text-sm font-bold text-green-900 dark:text-green-100">
+        {{ fmt.format(montoTotal) }}
+      </span>
+    </div>
+  </div>
+    <h2 class="text-lg font-semibold mb-2 px-1">Reportes de órdenes</h2>
     <GlobalTable
       :columns="columnsOrdenes"
-      :rows="rowsOrdenes"
-      :total-records="rowsOrdenes.length"
-      :current-page="pageA"
-      :page-size="pageSizeA"
+      :rows="ordenes.data"
+      :total-records="ordenes.total"
+      :current-page="ordenes.current_page"
+      :page-size="String(ordenes.per_page)"
       showSubHeader
-      :subHeaderProps="{
-            exportActions: [
-              { key: 'pdf',   onClick: downloadPdf },
-              { key: 'excel', onClick: downloadExcel }
-            ],
-          }"
-      @update:page="pageA = $event"
-      @update:pageSize="pageSizeA = $event"      
+      :subHeaderProps="{ exportActions: [
+        { key: 'excel', onClick: () => descargar('ordenes','excel') },
+        { key: 'pdf', onClick: () => descargar('ordenes','pdf') },] }"
+      @update:page="emit('change-page', $event)"
+      @update:pageSize="emit('change-page-size', parseInt($event, 10))"
     />
   </div>
 
-  <!-- Tabla B: Estadísticas de Productos -->
-  <div class="rounded-b-lg shadow overflow-x-auto">
-    <h2 class="text-lg font-semibold px-4 py-2">Estadísticas de Productos</h2>
+  <div class="mt-6">
+    <h2 class="text-lg font-semibold mb-2 px-1">Estadísticas de productos</h2>
     <GlobalTable
       :columns="columnsProductos"
-      :rows="rowsProductos"
-      :total-records="rowsProductos.length" 
-      :current-page="pageB"
-      :page-size="pageSizeB"
+      :rows="productosPage"
+      :total-records="totalP"
+      :current-page="pageP"
+      :page-size="String(pageSizeP)"
       showSubHeader
-      :subHeaderProps="{
-            exportActions: [
-              { key: 'pdf',   onClick: downloadPdf },
-              { key: 'excel', onClick: downloadExcel }
-            ],
-          }"
-      @update:page="pageB = $event"
-      @update:pageSize="pageSizeB = $event"
-    />  
- </div>
-
+      :subHeaderProps="{ exportActions: [
+        { key: 'excel', onClick: () => descargar('productos','excel') },
+        { key: 'pdf', onClick: () => descargar('productos','pdf') },] }"
+      @update:page="onPageP"
+      @update:pageSize="onPageSizeP"
+    />
+  </div>
 </template>

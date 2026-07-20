@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
 
             'auth' => [
             'user' => $request->user(),
+            'role' => $request->user()?->idgrupo_persona,
             'activeCompany' => $request->user() ? [
                 'id' => $contextService->getActiveId(),
                 'esSimulacion' => $request->user()->idgrupo_persona === 'SIIF',

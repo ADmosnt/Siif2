@@ -8,6 +8,7 @@ class TLineaProducto extends Model
 {
     //
     protected $primaryKey = 'id';
+	protected $table = 't_linea_productos';
 	public $incrementing = false;
 	public $timestamps = false;
 

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
+
 class ConciliarFacturaController extends Controller
 {
     /**
@@ -154,15 +155,15 @@ class ConciliarFacturaController extends Controller
 
             // 7. Actualizar productos en la orden
             foreach ($productosActualizados as $producto) {
-                $orden->Productos()->withoutGlobalScopes()->updateExistingPivot(
-                    $producto['id'],
-                    [
+                DB::table('t_item_ordenes')
+                    ->where('idorden',    $orden->idorden)
+                    ->where('idproducto', $producto['id'])
+                    ->update([
                         'cantidad_conciliada' => $producto['conciliada'],
-                        'cantidad_faltante' => $producto['faltantes'],
-                        'item_price' => $producto['precio'],
-                        'item_total' => $producto['conciliada'] * $producto['precio'],
-                    ]
-                );
+                        'cantidad_faltante'   => $producto['faltantes'],
+                        'item_price'          => $producto['precio'],
+                        'item_total'          => $producto['conciliada'] * $producto['precio'],
+                    ]);
             }
 
             // 8. Actualizar la orden

@@ -8,6 +8,7 @@ use App\Models\Scopes\OperadorFabricante;
 class TEstatusOrdene extends Model
 {
     protected $primaryKey = 'idestatus';
+    public $incrementing = true;
     public $timestamps = false;
 
     protected $hidden = ['idOperador','idFabricante'];

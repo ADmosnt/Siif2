@@ -13,13 +13,14 @@ use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Validators\Failure;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Carbon\Carbon;
 use Throwable; 
 
 use App\Exceptions\Duplicidad;
 
-class ProductosImport implements OnEachRow, WithHeadingRow,WithMultipleSheets, WithValidation, SkipsOnFailure, SkipsOnError, WithChunkReading
+class ProductosImport implements OnEachRow, WithHeadingRow,WithMultipleSheets, WithValidation, SkipsOnFailure, SkipsOnError, WithChunkReading, SkipsEmptyRows
 {
     public function onUnknownSheet($sheetName){
         throw new \Exception("La hoja '$sheetName' no existe en el archivo.");

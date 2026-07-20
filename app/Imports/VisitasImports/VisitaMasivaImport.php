@@ -35,12 +35,20 @@ class VisitaMasivaImport implements OnEachRow, WithHeadingRow, WithValidation, S
             return;
         }
 
-        try {
+    try {
+        // Verificar si la fecha viene como el número de serie de Excel
+        if (is_numeric($fecha)) {
+            // Excel cuenta desde 1900-01-01. Convertimos ese número a una fecha real.
+            $fechaParsed = Carbon::instance(\PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($fecha))
+                ->format('Y-m-d');
+        } else {
+            // Si viene como string estándar ('2026-05-16' o '16/05/2026')
             $fechaParsed = Carbon::parse($fecha)->format('Y-m-d');
-        } catch (\Exception $e) {
-            $this->errors[] = "Fila {$row->getIndex()}: Fecha invalida '{$fecha}'";
-            return;
         }
+    } catch (\Exception $e) {
+        $this->errors[] = "Fila {$row->getIndex()}: Fecha inválida '{$fecha}'";
+        return;
+    }
 
         try {
             $horaParsed = Carbon::parse($hora)->format('H:i:s');

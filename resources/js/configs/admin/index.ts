@@ -41,14 +41,14 @@ const COLS_PERSONA = [
 ];
 
 const COLS_PRODUCTO = [
-    { key: 'id', label: 'Código' },
-    { key: 'producto', label: 'Producto' },
-    { key: 'existencia', label: 'Cantidad' },
-    { key: 'linea', label: 'Línea' },
-    { key: 'fecha_registro', label: 'F. Expedición' },
-    { key: 'fecha_vencimiento', label: 'F.Vencimiento' },
-    { key: 'precio', label: 'Precio' },
-    { key: 'descuento', label: 'Descuento' },
+  { key: 'id', label: 'Código' },
+  { key: 'producto', label: 'Producto' },
+  { key: 'existencia', label: 'Cantidad' },
+  { key: 'linea', label: 'Línea' },
+  { key: 'fecha_registro', label: 'F. Expedición' },
+  { key: 'fecha_vencimiento', label: 'F.Vencimiento' },
+  { key: 'precio', label: 'Precio' },
+  { key: 'descuento', label: 'Descuento' },
 ];
 
 // Campos: Datos Personales (Parte Superior del Modal)
@@ -65,7 +65,7 @@ const FIELDS_PERSONAL_INFO: FieldConfig[] = [
 
 // Campos: Ubicación (Parte Inferior del Modal)
 const FIELDS_UBICACION: FieldConfig[] = [
-  { name: 'pais', label: 'País', type: 'combobox', class: 'md:col-span-1'},
+  { name: 'pais', label: 'País', type: 'combobox', class: 'md:col-span-1' },
   { name: 'estado', label: 'Estado', type: 'combobox', class: 'md:col-span-1', },
   { name: 'ciudad', label: 'Ciudad', type: 'combobox', class: 'md:col-span-1', },
 ];
@@ -84,9 +84,9 @@ export const configMap: Record<string, CrudConfig> = {
     rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP', 'RFV'],
     routePrefix: 'clientes',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Personas', href: '/personas' },
-        { label: 'Clientes' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Personas', href: '/personas' },
+      { label: 'Clientes' }
     ],
     columns: COLS_PERSONA,
     fields: [
@@ -94,6 +94,8 @@ export const configMap: Record<string, CrudConfig> = {
       { name: 'especialidad', label: 'Especialidad', type: 'combobox', class: 'md:col-span-1', options: [] },
       { name: 'clase', label: 'Clase', type: 'combobox', class: 'md:col-span-1', options: [] },
       { name: 'ranking', label: 'Ranking', type: 'combobox', class: 'md:col-span-1', options: [] },
+      { name: 'frecuencia', label: 'Frecuencia', type: 'combobox', class: 'md:col-span-1', options: [] },
+      { name: 'vendedor', label: 'Vendedor Asignado (RFV)', type: 'combobox', class: 'md:col-span-2', options: [] },
       { name: 'frecuencia', label: 'Frecuencia', type: 'combobox', class: 'md:col-span-1', options: [] },
       { name: 'vendedor', label: 'Vendedor Asignado (RFV)', type: 'combobox', class: 'md:col-span-2', options: [] },
       ...FIELDS_UBICACION
@@ -106,10 +108,11 @@ export const configMap: Record<string, CrudConfig> = {
   gerentes: {
     title: 'Agregar - Gerente',
     routePrefix: 'gerentes',
+    rolesQuePuedenEditar: ['SIIF', 'SUP'],
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Personas', href: '/personas' },
-        { label: 'Gerentes' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Personas', href: '/personas' },
+      { label: 'Gerentes' }
     ],
     columns: COLS_PERSONA,
     fields: [
@@ -129,12 +132,12 @@ export const configMap: Record<string, CrudConfig> = {
     rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'mayoristas',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Personas', href: '/personas' },
-        { label: 'Mayoristas' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Personas', href: '/personas' },
+      { label: 'Mayoristas' }
     ],
     columns: COLS_PERSONA,
-        fields: [
+    fields: [
       ...FIELDS_PERSONAL_INFO,
       { name: 'descuento', label: 'Descuento', type: 'text', class: 'md:col-span-1' },
       ...FIELDS_UBICACION
@@ -147,11 +150,12 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   representantes: {
     title: 'Agregar - Representante Fuerza Venta',
+    rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'representantes',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Personas', href: '/personas' },
-        { label: 'Representantes' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Personas', href: '/personas' },
+      { label: 'Representantes' }
     ],
     columns: COLS_PERSONA,
     fields: [
@@ -169,11 +173,12 @@ export const configMap: Record<string, CrudConfig> = {
   // ------------------------------------------------
   supervisores: {
     title: 'Agregar - Supervisor',
+    rolesQuePuedenEditar: ['SIIF', 'SUP'],
     routePrefix: 'supervisores',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Personas', href: '/personas' },
-        { label: 'Supervisores' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Personas', href: '/personas' },
+      { label: 'Supervisores' }
     ],
     columns: COLS_PERSONA,
     fields: [
@@ -193,9 +198,9 @@ export const configMap: Record<string, CrudConfig> = {
     rolesQuePuedenEditar: ['SIIF'],
     routePrefix: 'empresas',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Configuración' },
-        { label: 'Empresas' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Configuración' },
+      { label: 'Empresas' }
     ],
     columns: [
       ...COLS_PERSONA,
@@ -205,15 +210,15 @@ export const configMap: Record<string, CrudConfig> = {
       { key: 'toggle-status', label: 'Activar/Desactivar', roles: ['SIIF'] }
     ],
     fields: [
-        { name: 'nombre', label: 'Razón Social / Nombre', type: 'text', class: 'md:col-span-2' },
-        { name: 'idOperador', label: 'Código de Operador', type: 'text', class: 'md:col-span-1' },
-        { name: 'idFabricante', label: 'Código de Fabricante', type: 'text', class: 'md:col-span-2' },
-        { name: 'documento', label: 'RIF / Documento', type: 'text', class: 'md:col-span-1' },
-        { name: 'email', label: 'Correo Electrónico', type: 'email', class: 'md:col-span-2' },
-        { name: 'telefono', label: 'Teléfono', type: 'text', class: 'md:col-span-1' },
-        { name: 'direccion', label: 'Dirección Fiscal', type: 'text', class: 'md:col-span-3' },
-        ...FIELDS_UBICACION
-      ]
+      { name: 'nombre', label: 'Razón Social / Nombre', type: 'text', class: 'md:col-span-2' },
+      { name: 'idOperador', label: 'Código de Operador', type: 'text', class: 'md:col-span-1' },
+      { name: 'idFabricante', label: 'Código de Fabricante', type: 'text', class: 'md:col-span-2' },
+      { name: 'documento', label: 'RIF / Documento', type: 'text', class: 'md:col-span-1' },
+      { name: 'email', label: 'Correo Electrónico', type: 'email', class: 'md:col-span-2' },
+      { name: 'telefono', label: 'Teléfono', type: 'text', class: 'md:col-span-1' },
+      { name: 'direccion', label: 'Dirección Fiscal', type: 'text', class: 'md:col-span-3' },
+      ...FIELDS_UBICACION
+    ]
   },
   // ==========================
   // GRUPO: PRODUCTOS
@@ -227,9 +232,9 @@ export const configMap: Record<string, CrudConfig> = {
     rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'muestras',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Productos', href: '/productos' },
-        { label: 'Muestras' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Productos', href: '/productos' },
+      { label: 'Muestras' }
     ],
     columns: COLS_PRODUCTO,
     fields: [
@@ -254,9 +259,9 @@ export const configMap: Record<string, CrudConfig> = {
     rolesQuePuedenEditar: ['SIIF', 'GRT', 'SUP'],
     routePrefix: 'productos-lista',
     breadcrumbs: [
-        { label: 'SIIF', href: '/dashboard' },
-        { label: 'Productos', href: '/productos' },
-        { label: 'Lista de Productos' }
+      { label: 'SIIF', href: '/dashboard' },
+      { label: 'Productos', href: '/productos' },
+      { label: 'Lista de Productos' }
     ],
     columns: COLS_PRODUCTO,
     fields: [

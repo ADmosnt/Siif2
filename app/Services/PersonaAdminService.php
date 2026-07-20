@@ -49,28 +49,53 @@ class PersonaAdminService
      */
     public function crearPersona(string $tipo, array $data)
     {
-
         return DB::transaction(function () use ($tipo, $data) {
-            $idFabricante = $this->contextService->getActiveId();
-            $idOperador   = $this->contextService->getActiveOperador();
-            
             $idGrupo = $this->mapTipoToGrupo($tipo);
-            $idPersona = $idFabricante . ($data['documento'] ?? '');
-            
-            $datosMapeados = $this->mapearDatosPersona($data, [
-                    'idgrupo_persona' => $idGrupo,
-                    'idFabricante'    => $idFabricante,
-                    'idOperador'      => $idOperador,
-                    'idPersona'       => $idPersona
-                ]);
 
-            // Manejo de contraseña para roles de sistema
+            // 1. DETERMINAR VALORES DE IDENTIDAD SEGÚN EL TIPO
+            if ($tipo === 'empresas') {
+                // Caso especial: Empresa (Fabricante)
+                $idFabricante = $data['idFabricante']; // El prefijo que viene del modal
+                $idOperador   = $data['idOperador'];   // El operador que viene del modal
+                $idPersona    = $idFabricante;   // Para el fabricante, su ID de persona es su ID de fabricante
+            } else {
+                // Caso estándar: Clientes, RFV, etc.
+                $idFabricante = $this->contextService->getActiveId();
+                $idOperador   = $this->contextService->getActiveOperador();
+                $idPersona    = $idFabricante . ($data['documento'] ?? '');
+            }
+            
+            // 2. MAPEAR DATOS CON LOS VALORES CORRECTOS
+            $datosMapeados = $this->mapearDatosPersona($data, [
+                'idgrupo_persona' => $idGrupo,
+                'idFabricante'    => $idFabricante, // Si es FABR, su ID es el idFabricante
+                'idOperador'      => $idOperador,
+                'idPersona'       => $idPersona
+            ]);
+
+            // Manejo de contraseña...
             if ($this->esRolConAcceso($idGrupo) && !empty($data['password'])) {
                 $datosMapeados['password'] = Hash::make($data['password']);
                 $datosMapeados['idperfil'] = $this->obtenerIdPerfil($idGrupo);
             }
 
-            return TPersona::create($datosMapeados);
+            // 3. CREAR LA PERSONA
+            $persona = TPersona::create($datosMapeados);
+
+            // 4. RELACIÓN CLIENTE-VENDEDOR
+            if ($tipo === 'clientes' && isset($data['vendedor'])) {
+                \App\Models\RClienteRfv::create([
+                    'id_cliente'        => $persona->idPersona,
+                    'id_RFV'            => $this->limpiarCombobox($data['vendedor']),
+                    'idFabricante'      => $persona->idFabricante,
+                    'idOperador'        => $persona->idOperador,
+                    'idprofesion'       => $this->limpiarCombobox($persona->idespecialidad),
+                    'idespecialidad'    => $this->limpiarCombobox($persona->idactividad_negocio) ?? $this->limpiarCombobox($persona->idespecialidad),
+                    'idsubespecialidad' => $this->limpiarCombobox($persona->idsubespecialidad) ?? 'OTR',
+                ]);
+            }
+
+            return $persona;
         });
     }
 
@@ -95,7 +120,7 @@ class PersonaAdminService
         return TPersona::where('idPersona', $id)->update(['idestatus' => 0]);
     }
 
-    public function toggleFabricanteStatus(string $idFabricante): array
+        public function toggleFabricanteStatus(string $idFabricante): array
     {
         $personas = TPersona::where('idFabricante', $idFabricante)->get();
 
@@ -144,6 +169,8 @@ class PersonaAdminService
             'idestado'          => $this->limpiarCombobox($data['estado'] ?? null),
             'idciudad'          => $this->limpiarCombobox($data['ciudad'] ?? null),
             'idespecialidad'    => $this->limpiarCombobox($data['especialidad'] ?? null),
+            'idactividad_negocio' => $this->limpiarCombobox($data['idactividad_negocio'] ?? $data['especialidad'] ?? null),
+            'idsubespecialidad' => $this->limpiarCombobox($data['idsubespecialidad'] ?? $data['subespecialidad'] ?? null),
             'idclase_persona'   => $this->limpiarCombobox($data['clase'] ?? null),
             'idranking'         => $this->limpiarCombobox($data['ranking'] ?? null),
             'idfrecuencia'      => $this->limpiarCombobox($data['frecuencia'] ?? null),
@@ -175,8 +202,7 @@ class PersonaAdminService
             'mayoristas'     => 'MAY',
             'supervisores'   => 'SUP',
             'gerentes'       => 'GRT',
-            'fabricantes'    => 'FABR',
-            'empresas'       => 'FABR',
+            'empresas'    => 'FABR',
             default          => throw new \Exception("Tipo de entidad  '$slug' no soportado")
         };
     }

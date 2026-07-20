@@ -13,11 +13,12 @@ use Maatwebsite\Excel\Concerns\SkipsOnFailure;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Validators\Failure;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Throwable; 
 
 use App\Exceptions\Duplicidad;
 
-class PersonaImport implements OnEachRow, WithHeadingRow,WithMultipleSheets, WithValidation, SkipsOnFailure, SkipsOnError, WithChunkReading
+class PersonaImport implements OnEachRow, WithHeadingRow,WithMultipleSheets, WithValidation, SkipsOnFailure, SkipsOnError, WithChunkReading, SkipsEmptyRows
 {
         public function onUnknownSheet($sheetName)
     {

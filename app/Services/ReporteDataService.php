@@ -28,9 +28,10 @@ class ReporteDataService
     public function obtenerEstadoPorFabricante(string $descripcion, string $idFabricante): ?TEstatusOrdene
     {
         try {
-            return TEstatusOrdene::where('descripcion', $descripcion)
-                                ->where('idFabricante', $idFabricante)
-                                ->first();
+            return TEstatusOrdene::withoutGlobalScopes()
+                ->where('descripcion', $descripcion)
+                ->where('idFabricante', $idFabricante)
+                ->first();
         } catch (\Exception $e) {
             Log::error('Error obteniendo estado por fabricante:', ['message' => $e->getMessage(), 'descripcion' => $descripcion, 'idFabricante' => $idFabricante]);
             return null;
@@ -112,10 +113,9 @@ class ReporteDataService
     /**
      * Obtiene los productos para un RFV.
      */
-    public function getProductosData(Request $request, ?string $idRfv = null): LengthAwarePaginator
+    public function getProductosData(Request $request, ?string $idRfv = null): array
     {
         try {
-            // 1. Obtenemos el ID usando nuestro nuevo resolutor
             $idRfv = $idRfv ?? $request->input('idRfv');
             $fabricanteId = $this->getEffectiveFabricanteId($idRfv);
 
@@ -123,31 +123,44 @@ class ReporteDataService
             $page = $request->input('page', 1);
             $search = $request->input('search');
 
-            // 2. Creamos la Query base
             $query = TProducto::where('estatus_producto', 1);
 
-            // 3. Aplicamos el filtro de fabricante solo si existe
-            // (Si el SIIF está en modo Global y no hay RFV, traerá todos los productos del sistema)
             if ($fabricanteId) {
                 $query->where('idfabricante', $fabricanteId);
             }
 
-            return $query->when($search, fn($q) => $q->where('nombre_producto', 'like', "%{$search}%"))
+            $paginator = $query
+                ->when($search, fn($q) => $q->where('nombre_producto', 'like', "%{$search}%"))
                 ->orderBy('nombre_producto')
-                ->paginate($size, ['*'], 'page', $page)
-                ->through(fn ($p) => [
-                    'codigo' => $p->idproducto,
+                ->paginate($size, ['*'], 'page', $page);
+
+            return [
+                'data' => $paginator->map(fn ($p) => [
+                    'codigo'   => $p->idproducto,
                     'producto' => $p->nombre_producto,
-                    'precio' => $p->Precio_producto
-                ]);
+                    'precio'   => $p->Precio_producto,
+                ])->values()->toArray(),
+                'meta' => [
+                    'total'        => $paginator->total(),
+                    'per_page'     => $paginator->perPage(),
+                    'current_page' => $paginator->currentPage(),
+                    'last_page'    => $paginator->lastPage(),
+                ],
+            ];
+
         } catch (\Exception $e) {
             Log::error('Error obteniendo productos:', ['message' => $e->getMessage()]);
-            $size = $request->input('size', 15);
-            $page = $request->input('page', 1);
-            return new LengthAwarePaginator([], 0, $size, $page);
+            return [
+                'data' => [],
+                'meta' => [
+                    'total'        => 0,
+                    'per_page'     => 15,
+                    'current_page' => 1,
+                    'last_page'    => 1,
+                ],
+            ];
         }
     }
-
 
     /**
      * Obtiene los mayoristas para un RFV.

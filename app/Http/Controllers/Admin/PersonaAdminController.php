@@ -12,18 +12,21 @@ use App\Models\TEspecialidade;
 use App\Models\TClasePersona;
 use App\Models\TRankingCliente;
 use App\Models\TFrecuenciaVisita;
-use App\Services\AccessControlService;
 use App\Services\CompanyContextService;
+use App\Services\RepresentanteClienteService;
+use App\Services\AccessControlService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class PersonaAdminController extends Controller
 {
     public function __construct(
         protected PersonaAdminService $personaService,
         protected CompanyContextService $contextService,
-        protected AccessControlService $accessControl
+        protected RepresentanteClienteService $representanteClienteService,
+        protected AccessControlService $accessControl,
     ) {}
 
     /**
@@ -32,24 +35,46 @@ class PersonaAdminController extends Controller
     public function index(Request $request)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
-        if (!$this->accessControl->hasAnyRole(['SIIF', 'GRT', 'SUP'])) {
-            $this->accessControl->logUnauthorizedAccess('Conciliación de Facturas');
-            return redirect()->route('dashboard.index')->with('error', 'No tienes permisos para acceder a este módulo.');
+        $user = Auth::user();
+
+        if ($tipo === 'clientes' && $user->idgrupo_persona === 'RFV'){
+            $paginator = $this->representanteClienteService->getClientesData($request, $user->idPersona);
         }
 
-        try {
+        else {
             $paginator = $this->personaService->listarPaginado($tipo, $request);
-
+        }
+        try {
             return Inertia::render('Administrar/seccionGen', [
                 'tipo'    => $tipo,
+                'permissions' => [
+                    'can_create' => $this->checkGlobalPermission($tipo, 'create'),
+                    'can_update' => $this->checkGlobalPermission($tipo, 'edit'),
+                    'can_delete' => $this->checkGlobalPermission($tipo, 'delete'),
+                ],
                 'items'   => PersonaResource::collection($paginator),
                 'options' => $this->getOptions($tipo),
-                'filters' => $request->only(['search'])
+                'filters' => $request->only(['search', 'size'])
             ]);
         } catch (\Throwable $e) {
             Log::error('PersonaAdminController@index error', ['exception' => $e->getMessage(), 'tipo' => $tipo]);
             return redirect()->route('dashboard.index')->with('error', 'Ocurrió un error al listar los registros');
         }
+    }
+
+    private function checkGlobalPermission($tipo, $action)
+    {
+        $user = Auth::user();
+
+        if ($tipo === 'empresas') {
+        return $user->idgrupo_persona === 'SIIF';
+        }
+
+        if ($user->idgrupo_persona === 'RFV') {
+            return ($tipo === 'clientes');
+        }
+
+        return true;
     }
 
     private function getOptions($tipo)
@@ -76,6 +101,25 @@ class PersonaAdminController extends Controller
                 'label' => $e->descripcion_especialidad,
                 'value' => $e->id
             ])->toArray();
+            // 2. Aplicamos la lógica de Vendedores (RFV)
+            $user = Auth::user();
+            if ($user->idgrupo_persona === 'RFV') {
+                // Si el usuario es RFV, solo se ve a sí mismo
+                $options['vendedor'] = [[
+                    'label' => $user->name, 
+                    'value' => $user->idPersona
+                ]];
+            } else {
+                // Si es un rol superior, cargamos todos los RFV del fabricante
+                $options['vendedor'] = \App\Models\TPersona::where('idgrupo_persona', 'RFV')
+                    ->where('idfabricante', $idFabricante) // Asegúrate de que $idFabricante esté definido
+                    ->where('idestatus', 1)
+                    ->get()
+                    ->map(fn($v) => [
+                        'label' => $v->nombre_completo,
+                        'value' => $v->idPersona
+                    ])->toArray();
+            }
 
         $options['clase'] = TClasePersona::where('estatus',1)
             ->get()
@@ -126,8 +170,7 @@ class PersonaAdminController extends Controller
     // Reglas base comunes para todos
     $reglas = [
         'nombre'    => 'required|string|max:100',
-        'apellido'  => 'required|string|max:100',
-        'tipo_doc'  => 'required',
+        
         'documento' => 'required|string',
         'email'     => 'required|email',
         'telefono'  => 'required',
@@ -145,6 +188,7 @@ class PersonaAdminController extends Controller
                 'clase'        => 'required',
                 'ranking'      => 'required',
                 'frecuencia'   => 'required',
+                'vendedor'     => 'required',
             ]);
             break;
 
@@ -169,7 +213,12 @@ class PersonaAdminController extends Controller
             $reglas['username']   = 'required|unique:t_personas,name';
             $reglas['password']   = 'required|min:6';
             break;
-    }
+
+        case 'empresas':
+            $reglas['idOperador']   = 'required|string';
+            $reglas['idFabricante'] = 'required|string';
+            break;
+    }        
 
     /** @var array $validated */
     $validated = $request->validate($reglas);
@@ -213,7 +262,7 @@ class PersonaAdminController extends Controller
         }
     }
 
-    public function toggleFabricanteStatus(Request $request, string $idFabricante)
+        public function toggleFabricanteStatus(Request $request, string $idFabricante)
     {
         if (!$this->accessControl->hasAnyRole(['SIIF'])) {
             return response()->json(['error' => 'No autorizado'], 403);

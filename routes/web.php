@@ -24,7 +24,7 @@ use App\Http\Controllers\Admin\PersonaAdminController;
 use App\Http\Controllers\Admin\ProductoAdminController;
 use App\Http\Controllers\OptionsController;
 use App\Http\Controllers\ContactController;
-use App\Http\Controllers\Consultas\ConsultaReporteController;
+use App\Http\Controllers\ConsultaReporte\ConsultaReporteController;
 
 // ================================
 // 1. RUTA DE AUTENTICACIÓN Y CSRF
@@ -93,11 +93,18 @@ Route::middleware(['auth',])->group(function () {
     // --- EMPRESA / FABRICANTE ---
     Route::patch('/empresas/{idFabricante}/toggle-status', [PersonaAdminController::class, 'toggleFabricanteStatus'])->name('empresas.toggle-status');
 
-    // --- REPORTES (RTR) ---
-    Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
+    // --- NUEVO REPORTE ---
     Route::get('/nuevo-reporte', [ReporteController::class, 'index'])->name('nuevo-reporte.index');
-    Route::get('/reporte-agenda', fn() => Inertia::render('RTR/ReporteAgenda'))->name('ReporteAgenda');
+    Route::post('/reportes/nuevo', [ProcesarReporteController::class, 'new'])->name('reportes.procesar');
+    Route::get('/exportar/visitas',  [ConsultaReporteController::class, 'exportarVisitas'])->name('exportar.visitas');
+    Route::get('/exportar/ordenes',  [ConsultaReporteController::class, 'exportarOrdenes'])->name('exportar.ordenes');
+
+
+    // --- CONSULTA DE REPORTE ---
     Route::get('/consulta-reporte', [ConsultaReporteController::class, 'index'])->name('ConsultaReporte');
+    Route::get('/get-data-rfv', [ConsultaReporteController::class, 'getRepresentantes'])->name('get.data.rfv');
+    Route::post('/consulta/visita', [ConsultaReporteController::class, 'consultaVisita'])->name('consulta.vista');
+    Route::post('/consulta/ordenes', [ConsultaReporteController::class, 'consultaOrden'])->name('consulta.ordenes');
 
     // --- LISTA DE CLIENTES ---
     Route::get('/agenda', [AgendaController::class, 'index'])->name('rtr.lista-clientes');
@@ -106,6 +113,7 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/agenda-clientes-list', [AgendaController::class, 'getClientes'])->name('agenda.clientes.list');
 
     // Rutas para listas de reportes y datos relacionados
+    Route::get('/reporte-agenda', fn() => Inertia::render('RTR/ReporteAgenda'))->name('ReporteAgenda');
     Route::get('/reportes', [ListaReporteController::class, 'getReports'])->name('reportes.lista');
     Route::get('/representantes-data', [ListaReporteController::class, 'getRepresentantes'])->name('reportes.representantes');
 
@@ -113,7 +121,8 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/clientes/search', [ReporteController::class, 'searchClientes'])->name('clientes.search');
 
     // --- GERENCIAL ---
-    Route::get('/consulta-gerencial', [gerencialController::class, 'index'])->name('gerencial.index');
+    Route::get('/consulta-gerencial', [gerencialController::class, 'index'])->name('gerencial.index')->middleware('role:SIIF,GRT,SUP');
+    Route::get('/gerencial/representantes', [GerencialController::class, 'getRepresentantesData'])->name('gerencial.representantes')->middleware('role:SIIF,GRT,SUP');
     
     // --- SEGUIMIENTO DE PEDIDOS ---
     Route::get('/seguimiento', [PedidoController::class, 'seguimiento'])->name('pedidos.seguimiento');
@@ -129,6 +138,7 @@ Route::middleware(['auth',])->group(function () {
 
     // --- CONCILIACIÓN DE FACTURAS ---
     Route::get('/consolidar', [ConciliarController::class, 'index'])->name('consolidar.index');
+    Route::get('/conciliar/buscar-ordenes', [ConciliarController::class, 'buscarOrdenes'])->name('conciliar.buscar-ordenes')->middleware('role:SIIF,GRT,SUP');
     Route::post('/conciliar-factura', [ConciliarFacturaController::class, 'store'])->name('conciliar-factura.store');
 
     // --- PLANIFICADOR / CALENDARIO ---
@@ -146,64 +156,66 @@ Route::middleware(['auth',])->group(function () {
     Route::get('/tmp-planificaciones/plantilla-descarga', [TmpPlanificadorController::class, 'descargarPlantilla'])->name('tmp_planificaciones.plantilla');
     Route::post('/tmp-planificaciones/carga-masiva', [TmpPlanificadorController::class, 'cargaMasiva'])->name('tmp_planificaciones.carga_masiva');
 
-    // --- VISTAS ESTÁTICAS / SIN CONTROLADOR ---
+    // --- NOTIFICACIÓN ---
     Route::get('/notificacion', [\App\Http\Controllers\NotificacionWebController::class, 'index'])->name('notificacion');
     Route::post('/notificacion/enviar', [\App\Http\Controllers\NotificacionPushController::class, 'enviar'])->name('notificacion.enviar');
 
     // --- PUSH SUBSCRIPTIONS (web, autenticadas con sesión) ---
     Route::post('/push/subscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'store'])->name('push.subscribe');
     Route::post('/push/unsubscribe', [\App\Http\Controllers\Api\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
-    Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
-    Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
-    Route::get('/Contacto', fn() => Inertia::render('Contacto'))->name('Contacto');
-    Route::get('/agregar-operadores', fn() => Inertia::render('Administrar/Operadores'))->name('operadores');
 
     // ========================================
     // RUTA PARA EL ENVIO DE COMENTARIO EN LA VISTA DE CONTACTO
     // ========================================
     Route::post('/contacto', [ContactController::class, 'send'])->name('contact.send');
+    Route::get('/Contacto', fn() => Inertia::render('Contacto'))->name('Contacto');
+
+    // --- PREGUNSTAS FRECUENTES ---
+    Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
 
     // --- OFFLINE / PWA ---
     Route::get('/offline/master-data', [\App\Http\Controllers\Api\OfflineController::class, 'masterData'])->name('offline.master-data');
     Route::get('/offline/cache-auth', [\App\Http\Controllers\Api\OfflineController::class, 'cacheAuth'])->name('offline.cache-auth');
     Route::get('/sync-queue', fn() => Inertia::render('SyncQueue'))->name('sync-queue');
+    
+    });
 
+    // --- SERVICE WORKER CON SCOPE RAÍZ ---
+    Route::get('/offline-sw.js', function () {
+        $path = public_path('build/sw.js');
+        if (!file_exists($path)) {
+            abort(404);
+        }
+        return response(file_get_contents($path))
+            ->header('Content-Type', 'application/javascript')
+            ->header('Service-Worker-Allowed', '/');
+
+    // ================================
+    // RUTAS DE UPLOAD Y EXPORT
+    // ================================
+    // UPLOAD
+    Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
+    Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
+    Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
+
+    // EXPORT
+    Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
+    Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
+    Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
+
+    // =====================================
+    // RUTAS DE EXPORT PDF y EXCEL
+    // =====================================
+
+    Route::get('/gerencial/export/pdf', [GerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
+    Route::get('/gerencial/export/excel', [GerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
+
+    //estas rutas no sé de que ñame son, pero las dejo aquí mientras tanto
+    Route::get('/desc', fn() => Inertia::render('Descuentos'))->name('descuentós');
+    Route::get('/agregar-operadores', fn() => Inertia::render('Administrar/Operadores'))->name('operadores');
 });
-
-// --- SERVICE WORKER CON SCOPE RAÍZ ---
-Route::get('/offline-sw.js', function () {
-    $path = public_path('build/sw.js');
-    if (!file_exists($path)) {
-        abort(404);
-    }
-    return response(file_get_contents($path))
-        ->header('Content-Type', 'application/javascript')
-        ->header('Service-Worker-Allowed', '/');
-});
-
-// ================================
-// 3. RUTAS DE UPLOAD Y EXPORT
-// ================================
-// UPLOAD
-Route::post('/upload/personas/personas', [PersonaUploadController::class, 'storeNewPersonas']);
-Route::post('/upload/personas/clientesRfv', [PersonaUploadController::class, 'storeClientesRfv']);
-Route::post('/upload/productos', [ProductoUploadController::class, 'storeProducto']);
-
-// EXPORT
-Route::post('/export/personas/personasDown', [PersonaDownloadController::class, 'PersonaDownload']);
-Route::post('/export/personas/clientesRfvDown', [PersonaDownloadController::class, 'ClientByRFVDownload']);
-Route::post('/export/productos/productoDown', [ProductoDownloadController::class, 'ProductoDownloadByFabricante']);
     
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
-
-// =====================================
-// 4. RUTAS DE EXPORT PDF y EXCEL
-// =====================================
-
-Route::get('/gerencial/export/pdf', [GerencialController::class, 'exportPdf'])->name('gerencial.export.pdf');
-Route::get('/gerencial/export/excel', [GerencialController::class, 'exportExcel'])->name('gerencial.export.excel');
-
 
 

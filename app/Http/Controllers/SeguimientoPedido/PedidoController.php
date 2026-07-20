@@ -44,20 +44,20 @@ class PedidoController extends Controller
             $request->fecha_fin,
             $request->rfv_id,
             $request->input('per_page', 15),
-            $request->input('page', 1)
+                                                             $request->input('page', 1)
         );
 
         return response()->json([
             'data' => $ordenes->items(),
-            'meta' => [
-                'current_page' => $ordenes->currentPage(),
-                'last_page' => $ordenes->lastPage(),
-                'total' => $ordenes->total(),
-            ],
-            'links' => [
-                'next' => $ordenes->nextPageUrl(),
-                'prev' => $ordenes->previousPageUrl(),
-            ]
+                                'meta' => [
+                                    'current_page' => $ordenes->currentPage(),
+                                'last_page' => $ordenes->lastPage(),
+                                'total' => $ordenes->total(),
+                                ],
+                                'links' => [
+                                    'next' => $ordenes->nextPageUrl(),
+                                'prev' => $ordenes->previousPageUrl(),
+                                ]
         ]);
     }
 

@@ -5,6 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+        server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: 'localhost',
+            port: 5173,
+        },
+    },
     plugins: [
         laravel({
             input: ['resources/js/app.ts'],
@@ -20,13 +29,16 @@ export default defineConfig({
         }),
         tailwindcss(),
         VitePWA({
+            buildBase: '/',
             registerType: 'autoUpdate',
             injectRegister: false,
             manifest: false,
             includeAssets: ['favicon.ico', 'pwa-192x192.png', 'pwa-512x512.png'],
             workbox: {
                 importScripts: ['/push-handlers.js'],
+                globDirectory: 'public/build',
                 globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+                swDest: 'public/sw.js',
                 navigateFallback: null,
                 runtimeCaching: [
                     {

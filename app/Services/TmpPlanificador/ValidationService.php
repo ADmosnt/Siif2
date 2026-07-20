@@ -40,12 +40,12 @@ class ValidationService
         }
     }
 
-    public function validarFechaNoEsPasado(string $fecha, string $hora, bool $esActualizacion = false): void
+    public function validarFechaNoEsPasado(string $fecha, string $hora): void
     {
-        $fechaVisita = Carbon::parse($fecha);
-        if ($fechaVisita->isBefore(Carbon::today())) {
+        $fechaHora = Carbon::parse($fecha . ' ' . $hora);
+        if ($fechaHora->isBefore(Carbon::now())) {
             throw ValidationException::withMessages([
-                'Fecha' => ['La fecha no puede ser en el pasado.'],
+                'Fecha' => ['La fecha y hora no pueden ser en el pasado.'],
             ]);
         }
     }

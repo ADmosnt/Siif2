@@ -210,9 +210,8 @@ watch([pageB, pageSizeB], ([newPage, newSize]) => {
         :current-page="pageB"
         :page-size="pageSizeB"
         @confirm="handleConfirmFromModal"
-        @fetch="handleFetchProductos"
-        @update:page="pageB = $event"
-        @update:pageSize="pageSizeB = $event"
+          @update:page="handleFetchProductos({ page: $event, pageSize: pageSizeB, search: searchB })"
+          @update:pageSize="handleFetchProductos({ page: 1, pageSize: $event, search: searchB })"
       />
     </div>
 

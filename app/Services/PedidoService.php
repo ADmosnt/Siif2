@@ -27,13 +27,13 @@ class PedidoService
         int $perPage = 15,
         int $page = 1
     ): LengthAwarePaginator {
-        
+
         $user = Auth::user();
         $activeFabricante = $this->contextService->getActiveId();
 
         // Iniciamos quitando el scope global que suele filtrar por el idFabricante del usuario logueado
         $query = TOrdene::withoutGlobalScope(OperadorFabricante::class);
-        
+
         // 1. Aplicar Filtro de Seguridad por Contexto
         if ($user->idgrupo_persona === 'RFV') {
             $query->where('idpasadopor', $user->idPersona);
@@ -41,8 +41,8 @@ class PedidoService
             // SIIF, GRT o SUP con empresa seleccionada
             $query->whereHas('rfv', function ($q) use ($activeFabricante, $rfvId) {
                 $q->withoutGlobalScope(OperadorFabricante::class)
-                  ->where('idFabricante', $activeFabricante);
-                
+                ->where('idFabricante', $activeFabricante);
+
                 if ($rfvId) {
                     $q->where('idPersona', $rfvId);
                 }
@@ -51,7 +51,7 @@ class PedidoService
             // SIIF sin empresa seleccionada: no devolvemos nada por seguridad
             return new LengthAwarePaginator([], 0, $perPage);
         }
-        
+
         // 2. Filtros de Negocio
         if ($estatusId) $query->where('idestatus', $estatusId);
         if ($fechaInicio && $fechaFin) {
@@ -59,16 +59,16 @@ class PedidoService
             $fin    = max($fechaInicio, $fechaFin);
             $query->whereBetween('fechaOrden', [$inicio, $fin]);
         }
-        
+
         // 3. Carga de relaciones (Estandarizado)
         $query->with([
             'cliente', 'rfv', 'mayorista', 'mayoristas', 'estatus', 'productos', 'factura'
         ]);
-        
+
         $results = $query->orderBy('fechaOrden', 'desc')->paginate($perPage, ['*'], 'page', $page);
 
         $results->getCollection()->transform(fn($orden) => $this->formatearOrdenLista($orden));
-        
+
         return $results;
     }
 
@@ -81,16 +81,16 @@ class PedidoService
         $user = Auth::user();
 
         $query = TOrdene::withoutGlobalScope(OperadorFabricante::class)
-            ->with(['cliente', 'rfv', 'mayorista', 'mayoristas', 'estatus', 'productos', 'factura']);
+        ->with(['cliente', 'rfv', 'mayorista', 'mayoristas', 'estatus', 'productos', 'factura']);
 
         $orden = $query->find($ordenId);
-        
+
         if (!$orden) return null;
 
         // Validación de seguridad rápida:
         // ¿La orden pertenece al RFV logueado O al fabricante activo en el contexto?
         $rfv = $orden->rfv()->withoutGlobalScope(OperadorFabricante::class)->first();
-        
+
         if ($user->idgrupo_persona === 'RFV' && $orden->idpasadopor !== $user->idPersona) return null;
         if ($user->idgrupo_persona !== 'RFV' && $rfv?->idFabricante !== $activeFabricante) return null;
 
@@ -103,13 +103,13 @@ class PedidoService
     public function getEstatusDisponibles(): array
     {
         $activeFabricante = $this->contextService->getActiveId();
-        
+
         $query = TEstatusOrdene::withoutGlobalScope(OperadorFabricante::class);
-        
+
         if ($activeFabricante) {
             $query->where('idFabricante', $activeFabricante);
         }
-        
+
         return $query->get(['idestatus', 'descripcion'])->toArray();
     }
 
@@ -155,7 +155,7 @@ class PedidoService
     {
         // Combinar mayorista principal con secundarios
         $mayoristas = collect();
-        
+
         if ($orden->mayorista) {
             $mayoristas->push([
                 'id' => $orden->mayorista->idPersona,
@@ -163,7 +163,7 @@ class PedidoService
                 'descuento' => 0
             ]);
         }
-        
+
         if ($orden->mayoristas && $orden->mayoristas->isNotEmpty()) {
             foreach ($orden->mayoristas as $mayorista) {
                 $mayoristas->push([
@@ -181,10 +181,10 @@ class PedidoService
         $productos = [];
         if ($orden->productos && $orden->productos->isNotEmpty()) {
             $productos = $orden->productos->map(function($producto) use ($estaFacturada) {
-                $cantidadMostrar = $estaFacturada 
-                    ? ($producto->pivot->cantidad_conciliada ?? 0)
-                    : ($producto->pivot->cantidad_solicitada ?? 0);
-                
+                $cantidadMostrar = $estaFacturada
+                ? ($producto->pivot->cantidad_conciliada ?? 0)
+                : ($producto->pivot->cantidad_solicitada ?? 0);
+
                 return [
                     'id' => $producto->idproducto,
                     'nombre' => $producto->nombre_producto ?? 'Sin nombre',
@@ -200,7 +200,7 @@ class PedidoService
             Log::warning('No hay productos para formatear');
         }
 
-        // Coordenadas 
+        // Coordenadas
         $coordenadas = [
             'latitud' => $orden->coordenadas_l ?? '',
             'longitud' => $orden->coordenadas_a ?? '',
@@ -211,7 +211,7 @@ class PedidoService
             'estado' => $orden->cliente->idestado ?? 'Sin estado',
             'ciudad' => $orden->cliente->idciudad ?? 'Sin ciudad',
         ];
-        
+
         return [
             'nOrden' => $orden->idorden,
             'estatus' => $orden->estatus->descripcion ?? 'Sin estatus',
@@ -226,13 +226,13 @@ class PedidoService
             'comentario' => $orden->comentario_entrega ?? 'Sin comentarios',
             'factura' => $estaFacturada ? [
                 'idfactura' => $orden->factura->idfactura,
-                'fechaFactura' => $orden->factura->fechaFactura 
-                    ? $orden->factura->fechaFactura->format('d/m/Y') 
-                    : 'Sin fecha',
+                'fechaFactura' => $orden->factura->fechaFactura
+                ? $orden->factura->fechaFactura->format('d/m/Y')
+                : 'Sin fecha',
             ] : null,
             'estaFacturada' => $estaFacturada,
             'coordenadas' => $coordenadas,
-            'ubicacion_cliente' => $ubicacionCliente, 
+            'ubicacion_cliente' => $ubicacionCliente,
         ];
     }
 }

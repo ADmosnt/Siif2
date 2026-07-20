@@ -6,7 +6,7 @@ import GlobalTable from '@/components/GlobalTable.vue'
 import GenericCombobox from '@/components/GenericCombobox.vue'
 import { AgendaService } from '@/services/agendaService'
 import axios from 'axios'
-import type { 
+import type {
   AgendaPageProps,
   ClienteAgenda,
   DiaVisita,
@@ -49,18 +49,18 @@ const breadcrumbs = [
 const rowsData = computed(() => {
   const clientes = props.value.clientes?.data
   if (!Array.isArray(clientes)) return []
-  
+
   return clientes.map((cliente: ClienteAgenda) => ({
     id: cliente.id,
     idRfv: cliente.idRFV,
     nombre: cliente.nombre,
     ranking: cliente.ranking || 'N/A',
     actividad: cliente.actividad || 'N/A',
-    diasVisita: Array.isArray(cliente.dias_visita) 
-      ? cliente.dias_visita.map((dia: DiaVisita) => dia.descripcion).join(', ') 
+    diasVisita: Array.isArray(cliente.dias_visita)
+      ? cliente.dias_visita.map((dia: DiaVisita) => dia.descripcion).join(', ')
       : 'N/A',
-    horarios: Array.isArray(cliente.horarios) 
-      ? cliente.horarios.map((horario: Horario) => horario.descripcion).join(', ') 
+    horarios: Array.isArray(cliente.horarios)
+      ? cliente.horarios.map((horario: Horario) => horario.descripcion).join(', ')
       : 'N/A',
     visitas: `${cliente.visitado || 0} / ${cliente.frecuencia || 0}`
   }))
@@ -73,25 +73,25 @@ const summaries = computed(() => {
   if (user.value.idgrupo_persona === 'SIIF' && !selectedRfv.value && !activeCompany) {
     return []
   }
-  
+
   return [
-    { 
-      label: 'Visitas del Ciclo', 
+    {
+      label: 'Visitas del Ciclo',
       value: stats.ciclo || 0,
       className: 'text-blue-600 font-bold'
     },
-    { 
-      label: 'Días hábiles del Ciclo', 
+    {
+      label: 'Días hábiles del Ciclo',
       value: stats.dhabiles || 0,
       className: 'text-green-600 font-bold'
     },
-    { 
-      label: 'Visitas Diarias', 
+    {
+      label: 'Visitas Diarias',
       value: stats.visitasDiarias ? stats.visitasDiarias.toFixed(2) : '0.00',
       className: 'text-purple-600 font-bold'
     },
-    { 
-      label: 'Cobertura', 
+    {
+      label: 'Cobertura',
       value: `${(stats.cobertura || 0).toFixed(2)}%`,
       className: (stats.cobertura || 0) >= 80 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'
     }
@@ -148,7 +148,7 @@ const mensajeInformativo = computed(() => {
  */
 async function cargarRfvs() {
   if (rfvOptions.value.length > 0) return
-  
+
   isLoadingRfvs.value = true
   try {
     const response = await axios.get('/representantes-data')
@@ -158,7 +158,7 @@ async function cargarRfvs() {
       idFabricante: r.idFabricante,
       empresa: r.empresa
     }))
-    
+
     // Sincronizar con filtros de URL tras cargar opciones
     sincronizarConUrl()
   } catch (error) {
@@ -176,7 +176,7 @@ async function cargarClientes(query: string = '') {
     clienteOptions.value = []
     return
   }
-  
+
   isLoadingClientes.value = true
   try {
     const response = await axios.get('/agenda-clientes-list', {
@@ -202,9 +202,9 @@ async function cargarClientes(query: string = '') {
 async function sincronizarConUrl() {
   const filtros = props.value.filtros
   if (!filtros) return
-  
+
   isInternalUpdate.value = true
-  
+
   // Sincronizar RFV
   if (filtros.idRfv && rfvOptions.value.length > 0) {
     const rfvEncontrado = rfvOptions.value.find(r => r.value === String(filtros.idRfv))
@@ -213,7 +213,7 @@ async function sincronizarConUrl() {
       await cargarClientes()
     }
   }
-  
+
   // Sincronizar Cliente
   if (filtros.idCliente && clienteOptions.value.length > 0) {
     const clienteEncontrado = clienteOptions.value.find(c => c.value === String(filtros.idCliente))
@@ -221,7 +221,7 @@ async function sincronizarConUrl() {
       selectedCliente.value = clienteEncontrado
     }
   }
-  
+
   isInternalUpdate.value = false
 }
 
@@ -230,16 +230,16 @@ async function sincronizarConUrl() {
  */
 const handleRfvChange = async (rfv: RepresentanteSelect | null) => {
   if (isInternalUpdate.value) return
-  
+
   selectedRfv.value = rfv
   selectedCliente.value = null
-  
+
   if (rfv) {
     await cargarClientes()
   } else {
     clienteOptions.value = []
   }
-  
+
   AgendaService.actualizarFiltros({
     ...props.value.filtros,
     idRfv: rfv?.value || '',
@@ -253,9 +253,9 @@ const handleRfvChange = async (rfv: RepresentanteSelect | null) => {
  */
 const handleClienteChange = (cliente: SelectOption | null) => {
   if (isInternalUpdate.value) return
-  
+
   selectedCliente.value = cliente
-  
+
   AgendaService.actualizarFiltros({
     ...props.value.filtros,
     idCliente: cliente?.value || '',
@@ -290,12 +290,12 @@ const handlePageSizeChange = (newSize: string) => {
 
 const downloadExcel = () => {
   loading.value = true
-  
+
   // GRT/SUP: exportar datos generales sin filtro de RFV
-  const idRfvExport = ['GRT', 'SUP'].includes(user.value.idgrupo_persona) 
-    ? undefined 
+  const idRfvExport = ['GRT', 'SUP'].includes(user.value.idgrupo_persona)
+    ? undefined
     : selectedRfv.value?.value
-  
+
   AgendaService.exportarExcel(idRfvExport, selectedCliente.value?.value)
     .catch((err) => {
       console.error('Error al exportar:', err)
@@ -313,7 +313,7 @@ const reiniciarFiltros = () => {
   } else {
     selectedRfv.value = null
   }
-  
+
   selectedCliente.value = null
   clienteOptions.value = []
   AgendaService.reiniciarFiltros()
@@ -321,10 +321,10 @@ const reiniciarFiltros = () => {
 
 onMounted(async () => {
   await cargarRfvs()
-  
+
   // Setup inicial para RFV: auto-seleccionar si solo tiene un RFV
-  if (user.value.idgrupo_persona === 'RFV' && 
-      rfvOptions.value.length === 1 && 
+  if (user.value.idgrupo_persona === 'RFV' &&
+      rfvOptions.value.length === 1 &&
       !props.value.filtros?.idRfv) {
     selectedRfv.value = rfvOptions.value[0]
     await cargarClientes()
@@ -344,14 +344,14 @@ watch(
   () => props.value.filtros,
   async (newFiltros, oldFiltros) => {
     // Ignorar cambios de página solamente
-    if (newFiltros?.page !== oldFiltros?.page && 
-        newFiltros?.idRfv === oldFiltros?.idRfv && 
+    if (newFiltros?.page !== oldFiltros?.page &&
+        newFiltros?.idRfv === oldFiltros?.idRfv &&
         newFiltros?.idCliente === oldFiltros?.idCliente) {
       return
     }
-    
+
     // Sincronizar si hay diferencias reales en filtros
-    if (newFiltros?.idRfv !== selectedRfv.value?.value || 
+    if (newFiltros?.idRfv !== selectedRfv.value?.value ||
         newFiltros?.idCliente !== selectedCliente.value?.value) {
       await sincronizarConUrl()
     }
@@ -363,11 +363,11 @@ watch(
 <template>
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="flex h-full flex-1 flex-col gap-6 rounded-xl p-4">
-      
+
       <!-- Estadísticas -->
       <div v-if="summaries.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div 
-          v-for="(stat, index) in summaries" 
+        <div
+          v-for="(stat, index) in summaries"
           :key="index"
           class="bg-card text-card-foreground rounded-lg border shadow-sm p-4 border-l-4 border-l-blue-500"
         >
@@ -375,11 +375,11 @@ watch(
           <p :class="`text-2xl font-bold mt-1 ${stat.className}`">{{ stat.value }}</p>
         </div>
       </div>
-      
+
       <!-- Filtros -->
       <div class="bg-card text-card-foreground rounded-lg border shadow-sm p-4">
         <div class="flex flex-col md:flex-row items-end gap-4">
-          
+
           <div class="w-full md:w-64">
             <label class="block text-sm font-medium mb-1.5 opacity-80">
               Representante de Ventas
@@ -433,7 +433,7 @@ watch(
       <div v-if="mensajeInformativo" class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
         <p class="text-sm text-blue-700">{{ mensajeInformativo }}</p>
       </div>
-      
+
       <!-- Tabla -->
       <div class="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
         <GlobalTable
@@ -446,7 +446,7 @@ watch(
           :loading="loading"
           @update:page="handlePageChange"
           @update:pageSize="handlePageSizeChange"
-          :showSubHeader="false" 
+          :showSubHeader="false"
         />
       </div>
     </div>

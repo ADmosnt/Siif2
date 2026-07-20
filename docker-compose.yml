@@ -48,6 +48,7 @@ services:
     container_name: vue-build
     restart: unless-stopped
     working_dir: /var/www
+    command: sh -c "npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
     volumes:
       - .:/var/www:cached
       - node_modules:/var/www/node_modules
@@ -58,7 +59,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - VITE_HOST=0.0.0.0
       - VITE_PORT=5173
-      - VITE_HMR_HOST=${VITE_HMR_HOST}
+      - VITE_HMR_HOST=localhost
+      - VITE_HMR_PORT=5173
     networks:
       - laravel_network
 

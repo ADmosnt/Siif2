@@ -1,5 +1,12 @@
 // resources/js/types/pagination.ts
 // Interfaz para la información de meta de la paginación
+// Interfaz para los enlaces de la paginación
+export interface PaginationLink {
+  url: string | null;
+  label: string;
+  active: boolean;
+}
+
 export interface PaginationMeta {
   current_page: number;
   from?: number;        
@@ -9,13 +16,6 @@ export interface PaginationMeta {
   per_page: number;
   to?: number;          
   total: number;
-}
-
-// Interfaz para los enlaces de la paginación
-export interface PaginationLink {
-  url: string | null;
-  label: string;
-  active: boolean;
 }
 
 // Interfaz principal para los datos paginados
