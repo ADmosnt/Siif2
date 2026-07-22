@@ -7,6 +7,7 @@ import type {
   CachedTipoIncidente,
   CachedAuth,
   MasterDataResponse,
+  OfflineTokenResponse,
 } from './types'
 
 const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 horas
@@ -32,6 +33,11 @@ export async function isCacheFresh(): Promise<boolean> {
 }
 
 // --- GUARDAR datos maestros descargados del servidor ---
+// Solo se guarda lo estrictamente necesario para Toma de Pedidos y Nuevo
+// Reporte (ver ProcesarOrdenController::store y ProcesarReporteController::new
+// en el backend): id + nombre para selects, precio/lote/categoria para el
+// carrito de productos. Nada de documento, telefono, direccion, email,
+// existencia ni supervisores/gerentes: no los usa ninguno de los dos flujos.
 
 export async function storeMasterData(data: MasterDataResponse): Promise<void> {
   const now = Date.now()
@@ -41,8 +47,6 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
     db.cached_productos,
     db.cached_mayoristas,
     db.cached_representantes,
-    db.cached_supervisores,
-    db.cached_gerentes,
     db.cached_actividades_tipos,
     db.cached_incidentes_tipos,
   ], async () => {
@@ -50,8 +54,6 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
     await db.cached_productos.clear()
     await db.cached_mayoristas.clear()
     await db.cached_representantes.clear()
-    await db.cached_supervisores.clear()
-    await db.cached_gerentes.clear()
     await db.cached_actividades_tipos.clear()
     await db.cached_incidentes_tipos.clear()
 
@@ -60,12 +62,6 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
         data.clientes.map((c: any) => ({
           id: c.id ?? c.idPersona,
           nombre: c.nombre ?? c.nombre_completo_razon_social ?? '',
-          documento: c.documento ?? c.documento_identidad ?? '',
-          telefono: c.telefono ?? c.telefono_persona ?? '',
-          direccion: c.direccion ?? c.direccion_domicilio ?? '',
-          email: c.email ?? '',
-          ranking: c.ranking ?? c.idranking ?? '',
-          frecuencia: c.frecuencia ?? c.idfrecuencia ?? '',
           cached_at: now,
         }))
       )
@@ -79,8 +75,6 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
           codigo: p.codigo ?? p.idproducto ?? '',
           nombre: p.nombre ?? p.nombre_producto ?? p.producto ?? '',
           precio: Number(p.precio ?? p.Precio_producto ?? 0),
-          existencia: Number(p.existencia ?? p.cantidad_producto_existente ?? 0),
-          linea: p.linea ?? '',
           lote: p.lote ?? '',
           categoria: p.categoria ?? p.idcategorias ?? 'PROD',
           cached_at: now,
@@ -91,8 +85,6 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
     const personaGroups = [
       { data: data.mayoristas, table: db.cached_mayoristas },
       { data: data.representantes, table: db.cached_representantes },
-      { data: data.supervisores, table: db.cached_supervisores },
-      { data: data.gerentes, table: db.cached_gerentes },
     ]
 
     for (const group of personaGroups) {
@@ -129,18 +121,22 @@ export async function storeMasterData(data: MasterDataResponse): Promise<void> {
   })
 }
 
-// --- AUTH CACHE ---
+// --- TOKEN DE LOGIN OFFLINE ---
+// Reemplaza el guardado del hash de contraseña: el servidor emite un token
+// firmado con expiracion propia (ver OfflineController::issueOfflineToken).
+// El navegador nunca guarda la clave ni su hash.
 
-export async function storeAuthData(data: any): Promise<void> {
+export async function storeOfflineToken(data: OfflineTokenResponse): Promise<void> {
   await db.cached_auth.clear()
   await db.cached_auth.put({
     id: data.idPersona,
     name: data.name,
-    password_hash: data.password_hash,
     nombre_completo: data.nombre_completo,
     idFabricante: data.idFabricante,
     idgrupo_persona: data.idgrupo_persona,
     email: data.email ?? '',
+    token: data.token,
+    expires_at: data.expires_at,
     cached_at: Date.now(),
   })
 }
@@ -177,14 +173,6 @@ export async function getMayoristas(): Promise<CachedPersona[]> {
 
 export async function getRepresentantes(): Promise<CachedPersona[]> {
   return db.cached_representantes.orderBy('nombre').toArray()
-}
-
-export async function getSupervisores(): Promise<CachedPersona[]> {
-  return db.cached_supervisores.orderBy('nombre').toArray()
-}
-
-export async function getGerentes(): Promise<CachedPersona[]> {
-  return db.cached_gerentes.orderBy('nombre').toArray()
 }
 
 export async function getTiposActividad(): Promise<CachedTipoActividad[]> {

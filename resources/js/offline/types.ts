@@ -1,12 +1,6 @@
 export interface CachedCliente {
   id: string
   nombre: string
-  documento: string
-  telefono: string
-  direccion: string
-  email: string
-  ranking: string
-  frecuencia: string
   cached_at: number
 }
 
@@ -15,8 +9,6 @@ export interface CachedProducto {
   codigo: string
   nombre: string
   precio: number
-  existencia: number
-  linea: string
   lote: string
   categoria: string // 'PROD' | 'MUES'
   cached_at: number
@@ -43,11 +35,12 @@ export interface CachedTipoIncidente {
 export interface CachedAuth {
   id: string
   name: string
-  password_hash: string
   nombre_completo: string
   idFabricante: string
   idgrupo_persona: string
   email: string
+  token: string
+  expires_at: number
   cached_at: number
 }
 
@@ -80,10 +73,19 @@ export interface MasterDataResponse {
   productos: any[]
   mayoristas: any[]
   representantes: any[]
-  supervisores: any[]
-  gerentes: any[]
   actividades: any[]
   incidentes: any[]
   muestras: any[]
   timestamp: number
+}
+
+export interface OfflineTokenResponse {
+  token: string
+  expires_at: number
+  idPersona: string
+  name: string
+  nombre_completo: string
+  idFabricante: string
+  idgrupo_persona: string
+  email: string
 }

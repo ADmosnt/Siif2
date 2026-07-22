@@ -173,22 +173,10 @@ Route::middleware(['auth',])->group(function () {
     // --- PREGUNSTAS FRECUENTES ---
     Route::get('/preguntas', fn() => Inertia::render('Preguntas'))->name('Preguntas');
 
-    // --- OFFLINE / PWA ---
+    // --- OFFLINE / PWA (solo RFV) ---
     Route::get('/offline/master-data', [\App\Http\Controllers\Api\OfflineController::class, 'masterData'])->name('offline.master-data');
-    Route::get('/offline/cache-auth', [\App\Http\Controllers\Api\OfflineController::class, 'cacheAuth'])->name('offline.cache-auth');
+    Route::get('/offline/token', [\App\Http\Controllers\Api\OfflineController::class, 'issueOfflineToken'])->name('offline.token');
     Route::get('/sync-queue', fn() => Inertia::render('SyncQueue'))->name('sync-queue');
-    
-    });
-
-    // --- SERVICE WORKER CON SCOPE RAÍZ ---
-    Route::get('/offline-sw.js', function () {
-        $path = public_path('build/sw.js');
-        if (!file_exists($path)) {
-            abort(404);
-        }
-        return response(file_get_contents($path))
-            ->header('Content-Type', 'application/javascript')
-            ->header('Service-Worker-Allowed', '/');
 
     // ================================
     // RUTAS DE UPLOAD Y EXPORT

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   downloadMasterData,
-  downloadAuthData,
+  downloadOfflineToken,
   processQueue,
   getQueueCount,
   getPendingItems,
@@ -70,9 +70,18 @@ export const useOfflineStore = defineStore('offline', () => {
     if (!navigator.onLine) return
     await Promise.all([
       downloadMasterData(),
-      downloadAuthData(),
+      downloadOfflineToken(),
     ])
     await refreshCounts()
+  }
+
+  // Renueva el token offline y los datos maestros cada vez que vuelve la
+  // conexion (no solo al momento del login), para que un fallo puntual no
+  // deje el dispositivo sin poder loguearse offline por dias.
+  function refreshOfflineCache() {
+    Promise.all([downloadMasterData(), downloadOfflineToken()])
+      .then(() => refreshCounts())
+      .catch(() => {})
   }
 
   async function syncNow(): Promise<SyncResult> {
@@ -130,6 +139,7 @@ export const useOfflineStore = defineStore('offline', () => {
     if (offlineSession.value) {
       endOfflineSession()
     }
+    refreshOfflineCache()
     if (pendingCount.value > 0) {
       syncNow().catch(() => {})
     }

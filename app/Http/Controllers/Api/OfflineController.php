@@ -12,10 +12,31 @@ use Illuminate\Support\Facades\Auth;
 
 class OfflineController extends Controller
 {
+    /**
+     * El modo offline solo tiene sentido para RFV: son los unicos que
+     * trabajan en campo sin conexion garantizada. Los demas roles
+     * siempre operan con internet disponible.
+     */
+    private function assertOfflineEligible(TPersona $user): ?JsonResponse
+    {
+        if ($user->idgrupo_persona !== TPersona::TIPO_REPRESENTANTE) {
+            return response()->json([
+                'message' => 'El modo offline solo esta disponible para representantes (RFV).',
+            ], 403);
+        }
+
+        return null;
+    }
+
     public function masterData(): JsonResponse
     {
         $authUser = Auth::user();
         $user = TPersona::findOrFail($authUser->idPersona);
+
+        if ($denegado = $this->assertOfflineEligible($user)) {
+            return $denegado;
+        }
+
         $idFabricante = $user->idFabricante;
 
         return response()->json([
@@ -24,28 +45,67 @@ class OfflineController extends Controller
             'muestras' => $this->getMuestras($idFabricante),
             'mayoristas' => $this->getMayoristas($idFabricante),
             'representantes' => $this->getRepresentantes($idFabricante),
-            'supervisores' => $this->getSupervisores($idFabricante),
-            'gerentes' => $this->getGerentes($idFabricante),
             'actividades' => $this->getActividades($idFabricante),
             'incidentes' => $this->getIncidentes($idFabricante),
             'timestamp' => now()->timestamp,
         ]);
     }
 
-    public function cacheAuth(): JsonResponse
+    /**
+     * Emite un token de login offline firmado (HMAC), sin depender de la
+     * contrasena real del usuario. El dispositivo guarda este token en
+     * IndexedDB y lo usa para "iniciar sesion" localmente mientras no haya
+     * internet; nunca se guarda la clave ni su hash en el navegador.
+     */
+    public function issueOfflineToken(): JsonResponse
     {
         $authUser = Auth::user();
         $user = TPersona::findOrFail($authUser->idPersona);
 
-        return response()->json([
+        if ($denegado = $this->assertOfflineEligible($user)) {
+            return $denegado;
+        }
+
+        $ttlHours = (int) config('offline.token_ttl_hours', 12);
+        $issuedAt = now()->timestamp;
+        $expiresAt = now()->addHours($ttlHours)->timestamp;
+
+        $payload = [
             'idPersona' => $user->idPersona,
             'name' => $authUser->name,
-            'password_hash' => $authUser->password,
+            'nombre_completo' => $user->nombre_completo_razon_social,
+            'idFabricante' => $user->idFabricante,
+            'idgrupo_persona' => $user->idgrupo_persona,
+            'email' => $user->email ?? '',
+            'issued_at' => $issuedAt,
+            'expires_at' => $expiresAt,
+        ];
+
+        $token = $this->signPayload($payload);
+
+        return response()->json([
+            'token' => $token,
+            'expires_at' => $expiresAt,
+            'idPersona' => $user->idPersona,
+            'name' => $authUser->name,
             'nombre_completo' => $user->nombre_completo_razon_social,
             'idFabricante' => $user->idFabricante,
             'idgrupo_persona' => $user->idgrupo_persona,
             'email' => $user->email ?? '',
         ]);
+    }
+
+    private function signPayload(array $payload): string
+    {
+        $encoded = $this->base64UrlEncode(json_encode($payload));
+        $signature = hash_hmac('sha256', $encoded, (string) config('app.key'));
+
+        return "{$encoded}.{$signature}";
+    }
+
+    private function base64UrlEncode(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
     private function getClientes(TPersona $user): array
@@ -59,15 +119,13 @@ class OfflineController extends Controller
                 ->get();
         }
 
+        // Solo lo estrictamente necesario para el selector de cliente en
+        // Toma de Pedidos / Nuevo Reporte: id (FK) + nombre (display).
+        // No se envian documento, telefono, direccion ni email: esos campos
+        // no los usa ninguno de los dos flujos offline.
         return $clientes->map(fn(TPersona $c) => [
             'id' => $c->idPersona,
             'nombre' => $c->nombre_completo_razon_social,
-            'documento' => $c->documento_identidad,
-            'telefono' => $c->telefono_persona ?? $c->movil_persona,
-            'direccion' => $c->direccion_domicilio,
-            'email' => $c->email,
-            'ranking' => $c->idranking,
-            'frecuencia' => $c->idfrecuencia,
         ])->toArray();
     }
 
@@ -82,8 +140,6 @@ class OfflineController extends Controller
                 'codigo' => $p->idproducto,
                 'nombre' => $p->nombre_producto,
                 'precio' => (float) $p->Precio_producto,
-                'existencia' => (int) $p->cantidad_producto_existente,
-                'linea' => $p->idlinea_producto,
                 'lote' => $p->lote ?? '',
                 'categoria' => 'PROD',
             ])->toArray();
@@ -100,8 +156,6 @@ class OfflineController extends Controller
                 'codigo' => $p->idproducto,
                 'nombre' => $p->nombre_producto,
                 'precio' => (float) $p->Precio_producto,
-                'existencia' => (int) $p->cantidad_producto_existente,
-                'linea' => $p->idlinea_producto,
                 'lote' => $p->lote ?? '',
                 'categoria' => 'MUES',
             ])->toArray();
@@ -128,30 +182,6 @@ class OfflineController extends Controller
             ->map(fn(TPersona $r) => [
                 'id' => $r->idPersona,
                 'nombre' => $r->nombre_completo_razon_social,
-            ])->toArray();
-    }
-
-    private function getSupervisores(string $idFabricante): array
-    {
-        return TPersona::where('idgrupo_persona', 'SUP')
-            ->where('idFabricante', $idFabricante)
-            ->where('idestatus', 1)
-            ->get()
-            ->map(fn(TPersona $s) => [
-                'id' => $s->idPersona,
-                'nombre' => $s->nombre_completo_razon_social,
-            ])->toArray();
-    }
-
-    private function getGerentes(string $idFabricante): array
-    {
-        return TPersona::where('idgrupo_persona', 'GRT')
-            ->where('idFabricante', $idFabricante)
-            ->where('idestatus', 1)
-            ->get()
-            ->map(fn(TPersona $g) => [
-                'id' => $g->idPersona,
-                'nombre' => $g->nombre_completo_razon_social,
             ])->toArray();
     }
 

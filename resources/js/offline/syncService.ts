@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { db } from './db'
-import { storeMasterData, storeAuthData } from './cacheService'
-import type { SyncQueueItem, SyncOperationType, MasterDataResponse } from './types'
+import { storeMasterData, storeOfflineToken } from './cacheService'
+import type { SyncQueueItem, SyncOperationType, MasterDataResponse, OfflineTokenResponse } from './types'
 
 function generateLocalRef(type: SyncOperationType): string {
   const prefix = type === 'order' ? 'PED' : 'RPT'
@@ -44,17 +44,20 @@ export async function downloadMasterData(): Promise<{ success: boolean; error?: 
   }
 }
 
-// --- DESCARGAR Y CACHEAR DATOS DE AUTH ---
+// --- DESCARGAR Y CACHEAR TOKEN DE LOGIN OFFLINE ---
+// Reemplaza el antiguo cacheo de usuario/contraseña. Se llama al login y,
+// ademas, cada vez que el dispositivo recupera conexion (ver offlineStore.ts)
+// para que un fallo puntual no deje el token vencido o ausente por dias.
 
-export async function downloadAuthData(): Promise<{ success: boolean; error?: string }> {
+export async function downloadOfflineToken(): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await axios.get('/offline/cache-auth', {
+    const response = await axios.get<OfflineTokenResponse>('/offline/token', {
       _suppressAlert: true,
     } as any)
-    await storeAuthData(response.data)
+    await storeOfflineToken(response.data)
     return { success: true }
   } catch (error: any) {
-    const message = error.response?.data?.message || error.message || 'Error cacheando auth'
+    const message = error.response?.data?.message || error.message || 'Error renovando el token offline'
     return { success: false, error: message }
   }
 }

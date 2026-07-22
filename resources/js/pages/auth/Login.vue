@@ -13,7 +13,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
-import { verifyOfflineCredentials, createOfflineSession } from '@/offline/authService';
+import { verifyOfflineToken, createOfflineSession } from '@/offline/authService';
 import { useOfflineStore } from '@/stores/offlineStore';
 
 defineProps<{
@@ -37,7 +37,7 @@ const submitOffline = async () => {
   isSubmitting.value = true;
 
   try {
-    const result = await verifyOfflineCredentials(form.name, form.password);
+    const result = await verifyOfflineToken(form.name);
 
     if (!result.success) {
       generalError.value = result.error || 'Error de autenticacion offline.';
@@ -118,7 +118,7 @@ const clearGeneralError = () => {
                 <div v-if="offlineMode" class="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                   <div class="flex items-center text-sm text-amber-700 dark:text-amber-300">
                     <WifiOff class="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>Modo offline — se verificara con credenciales guardadas localmente.</span>
+                    <span>Modo offline — se usara la sesion guardada en este dispositivo (no se verifica contraseña).</span>
                   </div>
                 </div>
 
@@ -170,8 +170,8 @@ const clearGeneralError = () => {
                   </div>
                 </Field>
 
-                <!-- Campo Password -->
-                <Field>
+                <!-- Campo Password (no aplica en modo offline: el acceso se valida con el token guardado) -->
+                <Field v-if="!offlineMode">
                   <div class="flex items-center">
                     <FieldLabel for="password" class="text-gray-700 dark:text-gray-300">
                       Contraseña

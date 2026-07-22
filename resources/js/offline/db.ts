@@ -15,8 +15,6 @@ class SiifOfflineDB extends Dexie {
   cached_productos!: Table<CachedProducto, string>
   cached_mayoristas!: Table<CachedPersona, string>
   cached_representantes!: Table<CachedPersona, string>
-  cached_supervisores!: Table<CachedPersona, string>
-  cached_gerentes!: Table<CachedPersona, string>
   cached_actividades_tipos!: Table<CachedTipoActividad, string>
   cached_incidentes_tipos!: Table<CachedTipoIncidente, number>
   cached_auth!: Table<CachedAuth, string>
@@ -49,6 +47,23 @@ class SiifOfflineDB extends Dexie {
       sync_queue: '++id, type, status, created_at',
       sync_log: '++id, type, local_ref, synced_at',
     })
+
+    // v3: se elimina el cache de supervisores/gerentes (no lo usa ningun
+    // formulario offline) y se recorta el resto a lo minimo necesario para
+    // Toma de Pedidos / Nuevo Reporte (ver cacheService.ts).
+    this.version(3).stores({
+      cached_supervisores: null,
+      cached_gerentes: null,
+      cached_clientes: 'id, nombre, cached_at',
+      cached_productos: 'id, codigo, nombre, categoria, cached_at',
+      cached_mayoristas: 'id, nombre, cached_at',
+      cached_representantes: 'id, nombre, cached_at',
+      cached_actividades_tipos: 'id, cached_at',
+      cached_incidentes_tipos: 'id, cached_at',
+      cached_auth: 'id, name, cached_at',
+      sync_queue: '++id, type, status, created_at',
+      sync_log: '++id, type, local_ref, synced_at',
+    })
   }
 
   async clearAllCaches(): Promise<void> {
@@ -57,8 +72,6 @@ class SiifOfflineDB extends Dexie {
       this.cached_productos.clear(),
       this.cached_mayoristas.clear(),
       this.cached_representantes.clear(),
-      this.cached_supervisores.clear(),
-      this.cached_gerentes.clear(),
       this.cached_actividades_tipos.clear(),
       this.cached_incidentes_tipos.clear(),
     ])

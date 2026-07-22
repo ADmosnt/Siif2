@@ -1,5 +1,4 @@
-import bcrypt from 'bcryptjs'
-import { getCachedAuth, clearAuthCache } from './cacheService'
+import { getCachedAuth } from './cacheService'
 import type { CachedAuth } from './types'
 
 export interface OfflineSession {
@@ -10,29 +9,31 @@ export interface OfflineSession {
   idgrupo_persona: string
   email: string
   authenticated_at: number
+  expires_at: number
 }
 
 const OFFLINE_SESSION_KEY = 'siif2_offline_session'
 
-export async function verifyOfflineCredentials(
+/**
+ * Valida el login offline contra el token firmado emitido por el servidor
+ * (ver OfflineController::issueOfflineToken), no contra una contraseña.
+ * El navegador nunca guarda la clave del usuario ni su hash.
+ */
+export async function verifyOfflineToken(
   name: string,
-  password: string,
 ): Promise<{ success: boolean; user?: CachedAuth; error?: string }> {
   const cached = await getCachedAuth()
 
   if (!cached) {
-    return { success: false, error: 'No hay datos de sesion guardados. Necesita iniciar sesion con internet al menos una vez.' }
+    return { success: false, error: 'No hay una sesion offline guardada en este dispositivo. Debes iniciar sesion con internet al menos una vez.' }
   }
 
   if (cached.name !== name) {
-    return { success: false, error: 'Usuario no encontrado en cache local.' }
+    return { success: false, error: 'Ese usuario no tiene una sesion offline guardada en este dispositivo.' }
   }
 
-  // PHP bcrypt uses $2y$ prefix, bcryptjs supports it
-  const passwordMatch = await bcrypt.compare(password, cached.password_hash)
-
-  if (!passwordMatch) {
-    return { success: false, error: 'Contraseña incorrecta.' }
+  if (Date.now() > cached.expires_at) {
+    return { success: false, error: 'Tu acceso offline vencio. Conectate a internet para renovarlo.' }
   }
 
   return { success: true, user: cached }
@@ -47,6 +48,7 @@ export function createOfflineSession(user: CachedAuth): OfflineSession {
     idgrupo_persona: user.idgrupo_persona,
     email: user.email,
     authenticated_at: Date.now(),
+    expires_at: user.expires_at,
   }
 
   localStorage.setItem(OFFLINE_SESSION_KEY, JSON.stringify(session))
@@ -58,7 +60,12 @@ export function getOfflineSession(): OfflineSession | null {
   if (!data) return null
 
   try {
-    return JSON.parse(data) as OfflineSession
+    const session = JSON.parse(data) as OfflineSession
+    if (Date.now() > session.expires_at) {
+      clearOfflineSession()
+      return null
+    }
+    return session
   } catch {
     return null
   }
