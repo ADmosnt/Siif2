@@ -59,6 +59,15 @@ export default defineConfig({
             injectManifest: {
                 globDirectory: 'public/build',
                 globPatterns: ['**/*.{js,css,ico,png,svg,woff,woff2}'],
+                // globDirectory calcula las URLs como si "public/build" fuera
+                // la raiz del sitio (ej: "assets/app-xxx.js"), pero en
+                // realidad esos archivos se sirven bajo /build/ (ver
+                // .docker/nginx/default.conf, location /build/). Sin esto,
+                // el navegador pide /assets/... (404) en vez de
+                // /build/assets/..., y la instalacion del SW falla siempre.
+                modifyURLPrefix: {
+                    '': '/build/',
+                },
                 // Garantiza que el login quede precacheado desde la primera
                 // instalacion del SW, sin depender de que el navegador haya
                 // navegado ahi antes (ver setCatchHandler en sw.ts).
