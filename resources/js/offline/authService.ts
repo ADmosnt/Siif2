@@ -14,6 +14,13 @@ export interface OfflineSession {
 
 const OFFLINE_SESSION_KEY = 'siif2_offline_session'
 
+// expires_at viaja en SEGUNDOS (timestamp de Carbon/Laravel). Date.now() es
+// en MILISEGUNDOS: hay que convertir antes de comparar, si no el token
+// siempre parece vencido.
+function isExpired(expiresAtSeconds: number): boolean {
+  return Date.now() > expiresAtSeconds * 1000
+}
+
 /**
  * Valida el login offline contra el token firmado emitido por el servidor
  * (ver OfflineController::issueOfflineToken), no contra una contraseña.
@@ -32,7 +39,7 @@ export async function verifyOfflineToken(
     return { success: false, error: 'Ese usuario no tiene una sesion offline guardada en este dispositivo.' }
   }
 
-  if (Date.now() > cached.expires_at) {
+  if (isExpired(cached.expires_at)) {
     return { success: false, error: 'Tu acceso offline vencio. Conectate a internet para renovarlo.' }
   }
 
@@ -61,7 +68,7 @@ export function getOfflineSession(): OfflineSession | null {
 
   try {
     const session = JSON.parse(data) as OfflineSession
-    if (Date.now() > session.expires_at) {
+    if (isExpired(session.expires_at)) {
       clearOfflineSession()
       return null
     }
