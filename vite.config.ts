@@ -58,6 +58,8 @@ export default defineConfig({
                 // navegado ahi antes (ver setCatchHandler en sw.ts).
                 additionalManifestEntries: [
                     { url: '/login', revision: 'offline-login-shell-v1' },
+                    { url: '/tdp', revision: 'offline-tdp-shell-v1' },
+                    { url: '/nuevo-reporte', revision: 'offline-nuevo-reporte-shell-v1' },
                 ],
             },
         }),

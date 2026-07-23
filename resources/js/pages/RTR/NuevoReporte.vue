@@ -17,6 +17,7 @@ import ClienteCombobox from '@/components/ClienteCombobox.vue';
 import { useOffline } from '@/composables/useOffline';
 import SignaturePad from '@/components/SignaturePad.vue';
 import { useGeolocation } from '@/composables/useGeolocation';
+import { getOfflineRepresentantes, getOfflineActividades, getOfflineIncidentes, getOfflineMuestrasPaginated } from '@/offline/localData';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { label: 'SIIF', href: '/dashboard' },
@@ -58,9 +59,16 @@ const descripcion = ref('');
 const productosPage = ref(1);
 const productosPageSize = ref('15');
 
-const representantes = ref(props.representantes?.data || []);
-const actividades = computed(() => props.actividades || []);
-const eventos = computed(() => props.eventos || []);
+// === DATOS OFFLINE (se llenan desde IndexedDB cuando no hay internet) ===
+const offlineRepresentantes = ref<Representante[]>([]);
+const offlineActividades = ref<Actividad[]>([]);
+const offlineEventos = ref<Evento[]>([]);
+const offlineProductos = ref<PaginatedData<Producto> | null>(null);
+
+const representantes = computed(() => isOnline.value ? (props.representantes?.data || []) : offlineRepresentantes.value);
+const actividades = computed(() => isOnline.value ? (props.actividades || []) : offlineActividades.value);
+const eventos = computed(() => isOnline.value ? (props.eventos || []) : offlineEventos.value);
+const productosData = computed(() => isOnline.value ? props.productos : offlineProductos.value);
 
 
 const selectedCliente = ref<{ value: string; label: string } | null>(null);
@@ -233,10 +241,16 @@ const procesarReporte = async () => { clearAlerts();
 };
 
 
-const cargarProductos = (page: number = 1, size: string = '15') => {
+const cargarProductos = async (page: number = 1, size: string = '15') => {
 if (!selectedRFV.value) return;
 
 loadingProductos.value = true;
+
+if (!isOnline.value) {
+    offlineProductos.value = await getOfflineMuestrasPaginated(page, parseInt(size), '');
+    loadingProductos.value = false;
+    return;
+}
 
 router.reload({
     only: ['productos'],
@@ -250,6 +264,16 @@ router.reload({
     }
 });
 };
+
+// Carga (o recarga) representantes/actividades/incidentes/muestras desde
+// IndexedDB. Se usa al montar la pagina ya offline y al perder la conexion
+// en caliente.
+async function loadOfflineCatalogos() {
+    offlineRepresentantes.value = await getOfflineRepresentantes();
+    offlineActividades.value = await getOfflineActividades();
+    offlineEventos.value = await getOfflineIncidentes();
+    offlineProductos.value = await getOfflineMuestrasPaginated(1, 15, '');
+}
 
 
 const abrirModal = () => {
@@ -289,14 +313,33 @@ const newReporTableheader = [
 watch(selectedRFV, (newVal, oldVal) => {
     if (newVal !== oldVal) {
         productosPage.value = 1;
-        cargarProductos(1, productosPageSize.value);
         resetForm();
+
+        if (!isOnline.value) {
+            loadOfflineCatalogos();
+            return;
+        }
+
+        cargarProductos(1, productosPageSize.value);
         router.reload({ only: ['clientes', 'actividades', 'eventos', 'productos'], data: { idRfv: newVal } });
     }
 });
 
 watch([productosPage, productosPageSize], ([newPage, newSize]) => {
     cargarProductos(newPage, newSize);
+});
+
+watch(isOnline, (nowOnline) => {
+    if (nowOnline) {
+        // Recupero conexion: los datos offline pueden estar desactualizados,
+        // se refrescan con la version real del servidor.
+        router.reload({
+            only: ['clientes', 'representantes', 'actividades', 'eventos', 'productos'],
+            data: { idRfv: selectedRFV.value },
+        });
+    } else {
+        loadOfflineCatalogos();
+    }
 });
 
 // === PROCESAR ===
@@ -319,6 +362,10 @@ return actividad?.descripcionActividad.toLowerCase().includes('materiales') ?? f
 
 // === CARGA INICIAL ===
 onMounted(() => {
+    if (!isOnline.value) {
+        loadOfflineCatalogos();
+    }
+
     console.log('🔍 Datos recibidos en NuevoReporte:', {
         visitaTemporal: props.visitaTemporal,
         actividadesCount: props.actividades?.length,
@@ -459,8 +506,8 @@ onMounted(() => {
             :current-page="muestrasPagination.page"
             :page-size="muestrasPagination.pageSize"
             />
-            <AddMuestra_modal v-model="showModal" 
-            :productos="props.productos" 
+            <AddMuestra_modal v-model="showModal"
+            :productos="productosData" 
             :loading="loadingProductos"
             @confirm="handleConfirmFromModal" 
             :current-page="productosPage" 

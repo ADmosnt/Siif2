@@ -17,6 +17,7 @@ import { useValidationAlert } from '@/composables/useValidationAlert';
 import ClienteCombobox from '@/components/ClienteCombobox.vue';
 import { useOffline } from '@/composables/useOffline';
 import { useGeolocation } from '@/composables/useGeolocation';
+import { getOfflineRepresentantes, getOfflineMayoristasPaginated, getOfflineProductosPaginated } from '@/offline/localData';
 
 const breadcrumbs: BreadcrumbItem[] = [
   { label: 'Centro de Transferencias (CT)' },
@@ -59,14 +60,24 @@ const keyTables = ref(0);
 const maxChars = 256;
 const tax = ref(0);
 
+// === DATOS OFFLINE (se llenan desde IndexedDB cuando no hay internet) ===
+const offlineRepresentantes = ref<Representante[]>([]);
+const offlineMayoristas = ref<PaginatedData<Mayoristas> | null>(null);
+const offlineProductos = ref<PaginatedData<Producto> | null>(null);
+
 // datos paginados
 const representantes = computed(() => {
-  return (props.representantes?.data || []).filter(rep =>
+  const source = isOnline.value ? (props.representantes?.data || []) : offlineRepresentantes.value;
+  return source.filter(rep =>
     rep.id !== null &&
     rep.id !== undefined &&
     rep.id.toString().trim() !== ""
   );
 });
+
+const mayoristasData = computed(() => isOnline.value ? props.mayoristas : offlineMayoristas.value);
+const productosData = computed(() => isOnline.value ? props.productos : offlineProductos.value);
+
 const items = ref<CarritoItem[]>([]);
 
 const selectedCliente = ref<{ value: string; label: string } | null>(null);
@@ -218,10 +229,15 @@ const procesarPedido = async (): Promise<void> => {
     }
   );
 };
-const reloadProductos = (page: number, pageSize: string, search: string) => {
+const reloadProductos = async (page: number, pageSize: string, search: string) => {
   productosPage.value = page;
   productosPageSize.value = pageSize;
   productosSearch.value = search;
+
+  if (!isOnline.value) {
+    offlineProductos.value = await getOfflineProductosPaginated(page, parseInt(pageSize), search);
+    return;
+  }
 
   router.reload({
     only: ['productos'],
@@ -234,6 +250,33 @@ const reloadProductos = (page: number, pageSize: string, search: string) => {
   });
 };
 
+// Carga (o recarga) representantes/mayoristas/productos desde IndexedDB.
+// Se usa al montar la pagina ya offline y al perder la conexion en caliente.
+async function loadOfflineCatalogos() {
+  offlineRepresentantes.value = await getOfflineRepresentantes();
+  offlineMayoristas.value = await getOfflineMayoristasPaginated(1, 15, '');
+  offlineProductos.value = await getOfflineProductosPaginated(1, 15, '');
+}
+
+onMounted(() => {
+  if (!isOnline.value) {
+    loadOfflineCatalogos();
+  }
+});
+
+watch(isOnline, (nowOnline) => {
+  if (nowOnline) {
+    // Recupero conexion: los datos offline pueden estar desactualizados,
+    // se refrescan con la version real del servidor.
+    router.reload({
+      only: ['representantes', 'mayoristas', 'productos'],
+      data: { idRfv: selectedRFV.value, page: 1, size: 15, search: '' },
+    });
+  } else {
+    loadOfflineCatalogos();
+  }
+});
+
 // Watcher para cambios de paginación
 watch([productosPage, productosPageSize], ([newPage, newSize]) => {
   reloadProductos(newPage, newSize, productosSearch.value);
@@ -243,15 +286,20 @@ watch([productosPage, productosPageSize], ([newPage, newSize]) => {
 watch(selectedRFV, (newVal, oldVal) => {
   if (newVal !== oldVal) {
     resetForm();
-    
+
     // Reiniciar paginación
     productosPage.value = 1;
     productosPageSize.value = '15';
     productosSearch.value = '';
 
+    if (!isOnline.value) {
+      loadOfflineCatalogos();
+      return;
+    }
+
     router.reload({
       only: ['mayoristas', 'productos'],
-      data: { 
+      data: {
         idRfv: newVal,
         page: 1,
         size: 15,
@@ -344,8 +392,8 @@ watch(representantes, (newList) => {
           :key="keyTables"
           @update:items="items = $event"
           @update:mayoristas="rowsMayoristas = $event"
-          :mayoristas="props.mayoristas"
-          :productos="props.productos"
+          :mayoristas="mayoristasData"
+          :productos="productosData"
           @fetch-productos="reloadProductos($event.page, $event.pageSize, $event.search)"
         />
 
