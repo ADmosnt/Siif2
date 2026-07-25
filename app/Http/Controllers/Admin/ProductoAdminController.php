@@ -84,6 +84,11 @@ class ProductoAdminController extends Controller
     public function store(Request $request)
     {
         $tipo = $request->route()->defaults['tipo'];
+        $user = Auth::user();
+
+        if (!$this->checkProductPermission($user, 'create')) {
+            abort(403, 'No tiene permisos para crear este tipo de registro.');
+        }
 
         // REGLAS DINÁMICAS: Evitamos exigir datos de productos a líneas o tipos
         $reglas = match ($tipo) {
@@ -142,6 +147,11 @@ class ProductoAdminController extends Controller
     public function update(Request $request, $id)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
+
+        if (!$this->checkProductPermission($user, 'edit')) {
+            abort(403, 'No tiene permisos para editar este registro.');
+        }
 
         try {
             $this->productoService->actualizarProducto($tipo, $id, $request->all());
@@ -158,6 +168,11 @@ class ProductoAdminController extends Controller
     public function destroy(Request $request, $id)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
+
+        if (!$this->checkProductPermission($user, 'delete')) {
+            abort(403, 'No tiene permisos para eliminar este registro.');
+        }
 
         try {
             $this->productoService->eliminarProducto($tipo, $id);

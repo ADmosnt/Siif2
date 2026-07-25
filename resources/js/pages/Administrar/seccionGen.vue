@@ -1,7 +1,7 @@
 <!--resources/js/pages/Administrar/seccion-->
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { Head, router, useForm } from '@inertiajs/vue3'
+import { Head, router, useForm, usePage } from '@inertiajs/vue3'
 import { configMap } from '@/configs/admin'
 import AppLayout from '@/layouts/AppLayout.vue'
 import GlobalTable from '@/components/GlobalTable.vue'
@@ -17,9 +17,20 @@ const props = defineProps<{
   filters?: { search?: string };
 }>()
 
+// --- PERMISOS POR ROL ---
+// El backend ya bloquea create/update/destroy segun el rol (defensa real);
+// esto solo controla si se muestran los botones/columna en la UI.
+const page = usePage()
+const userRole = computed(() => (page.props.auth as any)?.role as string | undefined)
+const canEdit = computed(() => {
+  const roles = config.value.rolesQuePuedenEditar
+  if (!roles) return true
+  return !!userRole.value && roles.includes(userRole.value)
+})
+
 // --- CONFIGURACIÓN ---
-const config = computed(() => configMap[props.tipo] || { 
-  title: 'Error', 
+const config = computed(() => configMap[props.tipo] || {
+  title: 'Error',
   routePrefix: '', 
   breadcrumbs: [],
   columns: [], 
@@ -172,7 +183,9 @@ async function toggleEmpresaStatus(row: any) {
 
 // --- ACCIONES TABLA ---
 const tableActions = computed(() => {
-  const actions: any[] = [
+  if (!canEdit.value) return []
+
+  return [
     { key: 'edit', handler: openEditModal },
     {
       key: 'delete',
@@ -185,8 +198,6 @@ const tableActions = computed(() => {
       }
     }
   ]
-
-  return actions
 })
 </script>
 
@@ -214,11 +225,11 @@ const tableActions = computed(() => {
         :page-size="String(items.per_page)"
         :current-page="items.current_page"
 
-        :show-add-button="true"
+        :show-add-button="canEdit"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`"
         add-button-label-short="+"
 
-        :auto-add-actions-column="true"
+        :auto-add-actions-column="canEdit"
 
         @add="openCreateModal"
         @update:page="handlePageChange"

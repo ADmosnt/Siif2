@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use App\Http\Controllers\Controller;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class ConsultaReporteController extends Controller
 {
@@ -120,16 +121,35 @@ class ConsultaReporteController extends Controller
         $montoTotal    = collect($data['ordenes'])->sum('totalOrden');
 
         if ($tipo === 'pdf') {
-            $pdf = Pdf::loadView('exports.ordenes', [
-                'ordenes'      => $data['ordenes'],
-                'productos'    => $data['productos'],
-                'totalUnidades' => $totalUnidades,
-                'montoTotal'    => $montoTotal,
-                'fechaInicio'   => $request->input('fechaInicio'),
-                'fechaFin'      => $request->input('fechaFin'),
-            ])->setPaper('a4', 'landscape');
+            // dompdf tiene que construir y layoutear TODO el HTML en memoria
+            // antes de rasterizar; con datasets grandes agota memory_limit/
+            // max_execution_time y el proceso simplemente muere (a diferencia
+            // del Excel, que escribe filas sin necesitar un arbol DOM/CSS
+            // completo). Se limita el PDF a un tamaño manejable en vez de
+            // dejarlo fallar en silencio/timeout.
+            $maxFilasPdf = 1000;
+            if (count($data['ordenes']) > $maxFilasPdf) {
+                return back()->with('error', "El PDF admite hasta {$maxFilasPdf} órdenes por reporte. Acota el rango de fechas o los filtros (o usa la exportación a Excel, sin ese límite).");
+            }
 
-            return $pdf->download('reporte_ordenes.pdf');
+            try {
+                $pdf = Pdf::loadView('exports.ordenes', [
+                    'ordenes'      => $data['ordenes'],
+                    'productos'    => $data['productos'],
+                    'totalUnidades' => $totalUnidades,
+                    'montoTotal'    => $montoTotal,
+                    'fechaInicio'   => $request->input('fechaInicio'),
+                    'fechaFin'      => $request->input('fechaFin'),
+                ])->setPaper('a4', 'landscape');
+
+                return $pdf->download('reporte_ordenes.pdf');
+            } catch (\Throwable $e) {
+                Log::error('Error generando PDF de ordenes', [
+                    'exception' => $e->getMessage(),
+                    'total_ordenes' => count($data['ordenes']),
+                ]);
+                return back()->with('error', 'No se pudo generar el PDF. Intenta acotar el rango de fechas o los filtros.');
+            }
         }
 
         $export   = $tabla === 'productos'

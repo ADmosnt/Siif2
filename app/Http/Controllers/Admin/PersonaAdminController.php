@@ -166,6 +166,11 @@ class PersonaAdminController extends Controller
     public function store(Request $request)
     {
     $tipo = $request->route('tipo');
+    $user = Auth::user();
+
+    if (!$this->checkGlobalPermission($tipo, 'create')) {
+        abort(403, 'No tiene permisos para crear este tipo de registro.');
+    }
 
     // Reglas base comunes para todos
     $reglas = [
@@ -223,6 +228,13 @@ class PersonaAdminController extends Controller
     /** @var array $validated */
     $validated = $request->validate($reglas);
 
+    // Un RFV solo puede crear clientes asignados a si mismo, sin importar
+    // que "vendedor" haya mandado el formulario (defensa en profundidad,
+    // el select de vendedor ya solo le muestra su propio nombre).
+    if ($tipo === 'clientes' && $user->idgrupo_persona === 'RFV') {
+        $validated['vendedor'] = $user->idPersona;
+    }
+
     try {
         $this->personaService->crearPersona($tipo, $validated);
         return redirect()->back()->with('success', 'Registro creado con éxito');
@@ -238,6 +250,15 @@ class PersonaAdminController extends Controller
     public function update(Request $request, $id)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
+
+        if (!$this->checkGlobalPermission($tipo, 'edit')) {
+            abort(403, 'No tiene permisos para editar este registro.');
+        }
+
+        if ($tipo === 'clientes' && !$this->accessControl->canAccessCliente((string) $id, $user)) {
+            abort(403, 'No tiene permisos para editar este cliente.');
+        }
 
         try {
             $this->personaService->actualizarPersona($id, $request->all());
@@ -253,6 +274,17 @@ class PersonaAdminController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
+
+        if (!$this->checkGlobalPermission($tipo, 'delete')) {
+            abort(403, 'No tiene permisos para eliminar este registro.');
+        }
+
+        if ($tipo === 'clientes' && !$this->accessControl->canAccessCliente((string) $id, $user)) {
+            abort(403, 'No tiene permisos para eliminar este cliente.');
+        }
+
         try {
             $this->personaService->eliminarPersona($id);
             return back()->with('success', 'Registro eliminado');
