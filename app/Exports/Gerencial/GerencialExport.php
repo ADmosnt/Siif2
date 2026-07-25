@@ -63,11 +63,14 @@ class GerencialExport implements
     public function map($item): array
     {
         return [
-            // El helper optional() evita errores si la relación no existe
-            optional($item->supervisor)->nombre_completo_razon_social ?? 'Sin Supervisor',
-            optional($item->representante)->nombre_completo_razon_social ?? 'Sin RFV',
-            optional($item->zona)->descripcion_zona ?? 'N/A',
-            optional($item->ruta)->Descripcion ?? 'N/A',
+            // El query base (gerencialController::applyFilters) ya trae estos
+            // datos resueltos via leftJoin como alias planos; las relaciones
+            // Eloquent (supervisor/representante/zona/ruta) no se pueden usar
+            // aqui porque sus FK no forman parte del select del query base.
+            $item->supervisor_nombre ?? 'Sin Supervisor',
+            $item->rfv_nombre ?? 'Sin RFV',
+            $item->zona_nombre ?? 'N/A',
+            $item->ruta_descripcion ?? 'N/A',
             $item->MesRegistro ?? 'N/A',
             
             // Formateo manual de porcentaje

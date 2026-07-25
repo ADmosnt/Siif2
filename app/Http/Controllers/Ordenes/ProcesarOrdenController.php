@@ -42,6 +42,8 @@ class ProcesarOrdenController extends Controller
             'productos.*.id' => 'required|string|exists:t_productos,idproducto',
             'productos.*.unidades' => 'required|integer|min:1',
             'productos.*.precio' => 'required|numeric|min:0',
+            'lat' => 'required|numeric',
+            'lon' => 'required|numeric',
         ], [
             'cliente.exists' => 'El cliente seleccionado no es válido.',
             'representante.exists' => 'El representante seleccionado no es válido.',
@@ -135,6 +137,8 @@ class ProcesarOrdenController extends Controller
                 'descuento' => 0,
                 'TotalUnidades' => $totalUnidades,
                 'comentario_entrega' => $request->descripcion ?? '',
+                'coordenadas_l' => $request->lat,
+                'coordenadas_a' => $request->lon,
             ]);
 
             // 7. Adjuntar productos con valores recalculados

@@ -61,8 +61,16 @@ class PedidoService
         }
 
         // 3. Carga de relaciones (Estandarizado)
+        // estatus/factura tienen su propio OperadorFabricante scope (filtra
+        // por el idOperador/idFabricante del usuario AUTENTICADO), que no
+        // tiene nada que ver con el idFabricante de la orden ni con el
+        // contexto activo (SIIF/SUP/GRT viendo otra empresa) - sin quitarlo,
+        // el eager load casi nunca encuentra coincidencia.
         $query->with([
-            'cliente', 'rfv', 'mayorista', 'mayoristas', 'estatus', 'productos', 'factura'
+            'cliente', 'rfv', 'mayorista', 'mayoristas',
+            'estatus' => fn($q) => $q->withoutGlobalScope(OperadorFabricante::class),
+            'productos',
+            'factura' => fn($q) => $q->withoutGlobalScope(OperadorFabricante::class),
         ]);
 
         $results = $query->orderBy('fechaOrden', 'desc')->paginate($perPage, ['*'], 'page', $page);
@@ -81,7 +89,12 @@ class PedidoService
         $user = Auth::user();
 
         $query = TOrdene::withoutGlobalScope(OperadorFabricante::class)
-        ->with(['cliente', 'rfv', 'mayorista', 'mayoristas', 'estatus', 'productos', 'factura']);
+        ->with([
+            'cliente', 'rfv', 'mayorista', 'mayoristas',
+            'estatus' => fn($q) => $q->withoutGlobalScope(OperadorFabricante::class),
+            'productos',
+            'factura' => fn($q) => $q->withoutGlobalScope(OperadorFabricante::class),
+        ]);
 
         $orden = $query->find($ordenId);
 
@@ -129,7 +142,9 @@ class PedidoService
         $orden->idestatus = $nuevoEstatus;
         $orden->save();
 
-        return $orden->fresh(['estatus']);
+        return $orden->fresh([
+            'estatus' => fn($q) => $q->withoutGlobalScope(OperadorFabricante::class),
+        ]);
     }
 
     /**
