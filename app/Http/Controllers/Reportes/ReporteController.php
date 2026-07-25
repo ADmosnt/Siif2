@@ -66,7 +66,7 @@ class ReporteController extends Controller
 
             return Inertia::render($view, $data);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Error en la carga inicial de datos para NuevoReporte:', [
                 'message' => $e->getMessage(),
                 'trace'   => $e->getTraceAsString(),

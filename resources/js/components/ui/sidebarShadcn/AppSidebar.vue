@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<SidebarProps>(), {
   variant: 'inset',
 })
 
-const OFFLINE_URLS = new Set(['/nuevo-reporte', 'tdp', '/sync-queue'])
+const OFFLINE_URLS = new Set(['/nuevo-reporte', '/tdp', '/sync-queue'])
 
 const data = {
 
@@ -67,11 +67,11 @@ const data = {
       items: [
         {
           title: 'Toma de Pedidos',
-          url: 'tdp',
+          url: '/tdp',
         },
         {
           title: 'Seguimiento de Pedidos',
-          url: 'seguimiento',
+          url: '/seguimiento',
         },
         {
           title: 'Cola de Sincronizacion',
@@ -88,7 +88,7 @@ const data = {
       items: [
         {
           title: 'Conciliar Facturas',
-          url: 'consolidar',
+          url: '/consolidar',
         },
         {
           title: 'Monitor de Archivos',
