@@ -54,7 +54,7 @@ class AgendaService
                 }
 
                 return [
-                    'clientes' => $this->obtenerClientesPaginados($request, $idRfv),
+                    'clientes' => $this->obtenerClientesPaginados($request, $idRfv, $request->input('idCliente')),
                     'estadisticas' => $this->calcularEstadisticas($idRfv, $user)
                 ];
             }

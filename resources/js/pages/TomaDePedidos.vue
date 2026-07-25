@@ -250,6 +250,23 @@ const reloadProductos = async (page: number, pageSize: string, search: string) =
   });
 };
 
+const reloadMayoristas = async (page: number, pageSize: string, search: string) => {
+  if (!isOnline.value) {
+    offlineMayoristas.value = await getOfflineMayoristasPaginated(page, parseInt(pageSize), search);
+    return;
+  }
+
+  router.reload({
+    only: ['mayoristas'],
+    data: {
+      page: page,
+      size: parseInt(pageSize),
+      search: search,
+      idRfv: selectedRFV.value,
+    },
+  });
+};
+
 // Carga (o recarga) representantes/mayoristas/productos desde IndexedDB.
 // Se usa al montar la pagina ya offline y al perder la conexion en caliente.
 async function loadOfflineCatalogos() {
@@ -392,6 +409,7 @@ watch(representantes, (newList) => {
           :key="keyTables"
           @update:items="items = $event"
           @update:mayoristas="rowsMayoristas = $event"
+          @fetch-mayoristas="reloadMayoristas($event.page, $event.pageSize, $event.search)"
           :mayoristas="mayoristasData"
           :productos="productosData"
           @fetch-productos="reloadProductos($event.page, $event.pageSize, $event.search)"

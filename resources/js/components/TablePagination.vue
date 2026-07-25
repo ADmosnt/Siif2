@@ -1,7 +1,6 @@
 <!-- resources/js/components/TablePagination.vue -->
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem
 } from '@/components/ui/select'
@@ -59,6 +58,26 @@ function nextPage() {
   }
 }
 
+// Modo "links" (Inertia): en vez de navegar con <Link> (recarga completa de
+// pagina, remonta el componente y puede pisar el estado con valores por
+// defecto), se extrae el numero de pagina de la URL y se delega en el padre
+// via emit, igual que ya se hace para el cambio de tamano de pagina. Así el
+// padre puede usar preserveState/only y evitar el remount.
+function extractPage(url: string): number | null {
+  try {
+    const page = new URL(url, window.location.origin).searchParams.get('page')
+    return page ? parseInt(page, 10) : null
+  } catch {
+    return null
+  }
+}
+
+function goToLink(url: string | null) {
+  if (!url) return
+  const page = extractPage(url)
+  if (page !== null) emit('update:page', page)
+}
+
 </script>
 
 <template>
@@ -94,10 +113,10 @@ function nextPage() {
       <!-- MODO 1: Si existen 'links', usamos la paginación de Inertia -->
       <div  v-if="links" class="flex items-center space-x-1">
         <template v-for="(link, index) in links" :key="index">
-          <Link
+          <button
             v-if="link.url"
-            :href="link.url"
-            preserve-scroll
+            type="button"
+            @click="goToLink(link.url)"
             v-html="link.label"
             class="px-3 py-1.5 text-sm rounded-md"
             :class="{

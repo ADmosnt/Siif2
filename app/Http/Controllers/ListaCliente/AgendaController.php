@@ -102,28 +102,42 @@ class AgendaController extends Controller
     private function formatearLinks($paginator): array
     {
         $links = [];
+        $current = $paginator->currentPage();
+        $last = $paginator->lastPage();
+        $window = 2; // paginas visibles a cada lado de la actual
 
-        // Link a la primera página
         $links[] = [
-            'url' => $paginator->url(1),
+            'url' => $current > 1 ? $paginator->url($current - 1) : null,
             'label' => '&laquo; Previous',
-            'active' => false
+            'active' => false,
         ];
 
-        // Links de las páginas
-        foreach (range(1, $paginator->lastPage()) as $page) {
+        // Ventana de paginas: siempre primera y ultima, mas alrededor de la
+        // actual, con "..." en los huecos - evita listar TODAS las paginas
+        // (1..40) de corrido cuando hay muchos resultados.
+        $pages = collect(range(1, $last))
+            ->filter(fn ($page) => $page === 1 || $page === $last || abs($page - $current) <= $window)
+            ->values();
+
+        $previousPage = null;
+        foreach ($pages as $page) {
+            if ($previousPage !== null && $page - $previousPage > 1) {
+                $links[] = ['url' => null, 'label' => '...', 'active' => false];
+            }
+
             $links[] = [
                 'url' => $paginator->url($page),
                 'label' => (string) $page,
-                'active' => $page === $paginator->currentPage()
+                'active' => $page === $current,
             ];
+
+            $previousPage = $page;
         }
 
-        // Link a la última página
         $links[] = [
-            'url' => $paginator->url($paginator->lastPage()),
+            'url' => $current < $last ? $paginator->url($current + 1) : null,
             'label' => 'Next &raquo;',
-            'active' => false
+            'active' => false,
         ];
 
         return $links;

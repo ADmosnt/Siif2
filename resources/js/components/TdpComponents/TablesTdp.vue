@@ -212,6 +212,7 @@ watch([pageB, pageSizeB], ([newPage, newSize]) => {
         @confirm="handleConfirmFromModal"
           @update:page="handleFetchProductos({ page: $event, pageSize: pageSizeB, search: searchB })"
           @update:pageSize="handleFetchProductos({ page: 1, pageSize: $event, search: searchB })"
+          @search="(term: string) => handleFetchProductos({ page: 1, pageSize: pageSizeB, search: term })"
       />
     </div>
 

@@ -119,13 +119,32 @@ function handleSubmit() {
 
 // --- BUSCADOR ---
 const handleSearch = useDebounceFn((val: string) => {
-  router.get(window.location.pathname, { search: val }, { 
-    preserveState: true, 
-    replace: true 
+  router.get(window.location.pathname, { search: val }, {
+    preserveState: true,
+    replace: true
   })
 }, 500)
 
 watch(search, handleSearch)
+
+// --- PAGINACION ---
+// GlobalTable/TablePagination solo emiten estos eventos, no navegan por su
+// cuenta: sin estos handlers, cambiar de pagina o de tamano no tiene efecto.
+function handlePageChange(page: number) {
+  router.get(window.location.pathname, {
+    search: search.value,
+    page,
+    size: props.items.per_page,
+  }, { preserveState: true, replace: true })
+}
+
+function handlePageSizeChange(size: string) {
+  router.get(window.location.pathname, {
+    search: search.value,
+    size,
+    page: 1,
+  }, { preserveState: true, replace: true })
+}
 
 // --- TOGGLE ESTATUS EMPRESA ---
 const togglingStatus = ref(false)
@@ -202,6 +221,8 @@ const tableActions = computed(() => {
         :auto-add-actions-column="true"
 
         @add="openCreateModal"
+        @update:page="handlePageChange"
+        @update:pageSize="handlePageSizeChange"
       >
         <template #cell-estatus="{ row }">
           <button
