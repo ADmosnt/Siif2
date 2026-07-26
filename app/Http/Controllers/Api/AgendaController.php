@@ -103,7 +103,6 @@ class AgendaController extends Controller
             'idSupervisor' => $user->idsupervisor ?? $user->idPersona,
             'idstatus' => TTmpPlanificadore::ESTATUS_TEMPORAL,
             'idCreador' => $user->idPersona,
-            'idstatus' => $request->idstatus ?? 0,
         ]);
 
         return response()->json(['success' => 'Cita agendada correctamente', 'id' => $cita->Id], 200);

@@ -28,6 +28,14 @@ const canEdit = computed(() => {
   return !!userRole.value && roles.includes(userRole.value)
 })
 
+// --- PAGINACIÓN (normaliza forma de respuesta) ---
+// PersonaResource::collection()/ProductoResource::collection() envuelven el
+// paginator en { data, links, meta: { current_page, per_page, total } };
+// items.per_page/total/current_page (planos) solo existen si el controlador
+// devuelve el paginator sin envolver en un Resource. Sin esto, con la forma
+// envuelta el Select de tamano de pagina recibe "undefined" y no muestra nada.
+const paginationMeta = computed(() => props.items.meta || props.items)
+
 // --- CONFIGURACIÓN ---
 const config = computed(() => configMap[props.tipo] || {
   title: 'Error',
@@ -145,7 +153,7 @@ function handlePageChange(page: number) {
   router.get(window.location.pathname, {
     search: search.value,
     page,
-    size: props.items.per_page,
+    size: paginationMeta.value.per_page,
   }, { preserveState: true, replace: true })
 }
 
@@ -221,9 +229,9 @@ const tableActions = computed(() => {
         :actions="tableActions"
 
         :links="items.meta ? items.meta.links : items.links"
-        :total-records="items.total"
-        :page-size="String(items.per_page)"
-        :current-page="items.current_page"
+        :total-records="paginationMeta.total"
+        :page-size="String(paginationMeta.per_page)"
+        :current-page="paginationMeta.current_page"
 
         :show-add-button="canEdit"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`"

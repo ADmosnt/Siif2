@@ -129,7 +129,9 @@ class ConsultaReporteController extends Controller
             // dejarlo fallar en silencio/timeout.
             $maxFilasPdf = 1000;
             if (count($data['ordenes']) > $maxFilasPdf) {
-                return back()->with('error', "El PDF admite hasta {$maxFilasPdf} órdenes por reporte. Acota el rango de fechas o los filtros (o usa la exportación a Excel, sin ese límite).");
+                return response()->json([
+                    'error' => "El PDF admite hasta {$maxFilasPdf} órdenes por reporte. Acota el rango de fechas o los filtros (o usa la exportación a Excel, sin ese límite).",
+                ], 422);
             }
 
             try {
@@ -148,7 +150,7 @@ class ConsultaReporteController extends Controller
                     'exception' => $e->getMessage(),
                     'total_ordenes' => count($data['ordenes']),
                 ]);
-                return back()->with('error', 'No se pudo generar el PDF. Intenta acotar el rango de fechas o los filtros.');
+                return response()->json(['error' => 'No se pudo generar el PDF. Intenta acotar el rango de fechas o los filtros.'], 500);
             }
         }
 

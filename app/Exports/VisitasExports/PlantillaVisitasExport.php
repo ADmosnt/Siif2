@@ -52,7 +52,8 @@ class PlantillaVisitasExport implements FromArray, WithHeadings, WithStyles, Wit
      */
     private function agregarHojaReferencia(AfterSheet $event): void
     {
-        $user = Auth::user();
+        $authUser = Auth::user();
+        $user = TPersona::findOrFail($authUser->idPersona);
 
         $rfvs = $user->esRepresentante()
             ? collect([$user])
