@@ -30,7 +30,7 @@ class TTmpPlanificadore extends Model
         'idSupervisor',
         'idstatus',
         'idCreador',
-        'estatus_visita',
+        'idstatus',
     ];
 
 

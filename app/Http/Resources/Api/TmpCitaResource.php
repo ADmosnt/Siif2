@@ -19,7 +19,7 @@ class TmpCitaResource extends JsonResource
             'hora' => $this->Hora,
             'idstatus' => $this->idstatus,
             'idCreador' => $this->idCreador,
-            'estatus_visita' => $this->estatus_visita,
+            'idstatus' => $this->idstatus,
         ];
     }
 }

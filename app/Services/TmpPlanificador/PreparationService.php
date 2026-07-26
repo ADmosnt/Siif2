@@ -16,7 +16,7 @@ class PreparationService
             'Fecha' => $data['Fecha'],
             'Hora' => $data['Hora'],
             'idstatus' => 1,
-            'estatus_visita' => TTmpPlanificadore::ESTATUS_TEMPORAL,
+            'idstatus' => TTmpPlanificadore::ESTATUS_TEMPORAL,
             'idCreador' => $user->idPersona,
         ];
 

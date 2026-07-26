@@ -20,7 +20,7 @@ class QueryService
             ->with(['rfv', 'cliente'])
             ->whereYear('Fecha', $year)
             ->whereMonth('Fecha', $month)
-            ->where('estatus_visita', TTmpPlanificadore::ESTATUS_TEMPORAL);
+            ->where('idstatus', TTmpPlanificadore::ESTATUS_TEMPORAL);
 
         $this->filterService->aplicarFiltrosSeguridad($query, $idRfvFiltro);
         return $query->get();
@@ -31,7 +31,7 @@ class QueryService
         $query = TTmpPlanificadore::with(['rfv', 'cliente'])
             ->whereYear('Fecha', $year)
             ->whereMonth('Fecha', $month)
-            ->where('estatus_visita', TTmpPlanificadore::ESTATUS_PERDIDA);
+            ->where('idstatus', TTmpPlanificadore::ESTATUS_PERDIDA);
 
         $this->filterService->aplicarFiltrosSeguridad($query, $idRfvFiltro);
 

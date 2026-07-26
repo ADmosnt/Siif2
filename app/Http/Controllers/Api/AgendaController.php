@@ -81,7 +81,7 @@ class AgendaController extends Controller
             'idRFV' => 'nullable|string',
             'fecha' => 'required|date',
             'hora' => 'required',
-            'estatus_visita' => 'nullable|integer',
+            'idstatus' => 'nullable|integer',
         ], [
             'required' => 'El :attribute es requerido',
         ]);
@@ -103,7 +103,7 @@ class AgendaController extends Controller
             'idSupervisor' => $user->idsupervisor ?? $user->idPersona,
             'idstatus' => TTmpPlanificadore::ESTATUS_TEMPORAL,
             'idCreador' => $user->idPersona,
-            'estatus_visita' => $request->estatus_visita ?? 0,
+            'idstatus' => $request->idstatus ?? 0,
         ]);
 
         return response()->json(['success' => 'Cita agendada correctamente', 'id' => $cita->Id], 200);
@@ -119,7 +119,7 @@ class AgendaController extends Controller
             'fecha' => 'nullable|date',
             'hora' => 'nullable',
             'idCliente' => 'nullable|string',
-            'estatus_visita' => 'nullable|integer',
+            'idstatus' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -141,7 +141,7 @@ class AgendaController extends Controller
         if ($request->has('fecha')) $cita->Fecha = $request->fecha;
         if ($request->has('hora')) $cita->Hora = $request->hora;
         if ($request->has('idCliente')) $cita->idCliente = $request->idCliente;
-        if ($request->has('estatus_visita')) $cita->estatus_visita = $request->estatus_visita;
+        if ($request->has('idstatus')) $cita->idstatus = $request->idstatus;
 
         $cita->save();
 

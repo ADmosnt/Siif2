@@ -32,11 +32,11 @@ class ProcesarVisitasVencidas extends Command
         $this->info('Iniciando proceso de actualización de visitas vencidas...');
 
         // --- Encontrar visitas vencidas ---
-        // donde estatus_visita = 1 (Pendiente)
+        // donde idstatus = 1 (Pendiente)
         // y Fecha + 1 semana < Fecha y hora actual
         $fechaLimite = Carbon::now()->subWeek();
 
-        $visitasVencidas = TTmpPlanificadore::where('estatus_visita', TTmpPlanificadore::ESTATUS_TEMPORAL)
+        $visitasVencidas = TTmpPlanificadore::where('idstatus', TTmpPlanificadore::ESTATUS_TEMPORAL)
             ->where('Fecha', '<', $fechaLimite->toDateString())
             ->get();
 
@@ -51,7 +51,7 @@ class ProcesarVisitasVencidas extends Command
             foreach ($visitasVencidas as $visita) {
                 try {
                     // --- Actualizar el estatus ---
-                    $visita->update(['estatus_visita' => TTmpPlanificadore::ESTATUS_PERDIDA]);
+                    $visita->update(['idstatus' => TTmpPlanificadore::ESTATUS_PERDIDA]);
 
                     // Opcional: Registrar la acción en un log específico
                     Log::info("Visita temporal ID {$visita->Id} marcada como perdida automáticamente.", [

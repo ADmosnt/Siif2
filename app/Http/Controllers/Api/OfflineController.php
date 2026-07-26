@@ -17,25 +17,11 @@ class OfflineController extends Controller
      * trabajan en campo sin conexion garantizada. Los demas roles
      * siempre operan con internet disponible.
      */
-    private function assertOfflineEligible(TPersona $user): ?JsonResponse
-    {
-        if ($user->idgrupo_persona !== TPersona::TIPO_REPRESENTANTE) {
-            return response()->json([
-                'message' => 'El modo offline solo esta disponible para representantes (RFV).',
-            ], 403);
-        }
-
-        return null;
-    }
 
     public function masterData(): JsonResponse
     {
         $authUser = Auth::user();
         $user = TPersona::findOrFail($authUser->idPersona);
-
-        if ($denegado = $this->assertOfflineEligible($user)) {
-            return $denegado;
-        }
 
         $idFabricante = $user->idFabricante;
 

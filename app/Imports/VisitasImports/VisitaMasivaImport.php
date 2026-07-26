@@ -81,7 +81,7 @@ class VisitaMasivaImport implements OnEachRow, WithHeadingRow, WithValidation, S
             'idSupervisor' => $user->idgrupo_persona === 'RFV' ? $user->idsupervisor : $user->idPersona,
             'idstatus' => 1,
             'idCreador' => $user->idPersona,
-            'estatus_visita' => TTmpPlanificadore::ESTATUS_TEMPORAL,
+            'idstatus' => TTmpPlanificadore::ESTATUS_TEMPORAL,
         ]);
 
         $this->importados++;
