@@ -211,7 +211,7 @@ export default defineComponent({
       class="vue-number-input__button vue-number-input__button--minus absolute top-px bottom-px left-px z-10 border-r border-gray-300 rounded-l disabled:opacity-65 focus:outline-none"
       :class="[
         size === 'small' ? 'w-8' : size === 'large' ? 'w-12' : 'w-10',
-        'bg-white dark:bg-gray-700'
+        'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
       ]"
       type="button"
       tabindex="-1"
@@ -258,7 +258,7 @@ export default defineComponent({
       class="vue-number-input__button absolute top-px bottom-px right-px z-10 border-l border-gray-300 rounded-r disabled:opacity-65 focus:outline-none"
       :class="[
         size === 'small' ? 'w-8' : size === 'large' ? 'w-12' : 'w-10',
-        'bg-white dark:bg-gray-700'
+        'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
       ]"
       type="button"
       tabindex="-1"
@@ -274,13 +274,13 @@ export default defineComponent({
 
 
 .vue-number-input__button::before {
-  height: 1px;
+  height: 2px;
   width: 50%;
 }
 
 .vue-number-input__button::after {
   height: 50%;
-  width: 1px;
+  width: 2px;
 }
 
 .vue-number-input__button--minus::after {
