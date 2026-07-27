@@ -70,7 +70,7 @@ function nextPage() {
         :model-value="props.pageSize" 
         @update:model-value="(newValue) => { if (newValue) emit('update:pageSize', String(newValue)) }"
       >
-        <SelectTrigger class="w-20"><SelectValue/></SelectTrigger>
+        <SelectTrigger class="w-20"><SelectValue>{{ props.pageSize }}</SelectValue></SelectTrigger>
         <SelectContent>
           <SelectGroup>
             <SelectItem value="15">15</SelectItem>

@@ -14,7 +14,8 @@ const props = defineProps<{
   tipo: string;
   items: any;
   options: Record<string, any>;
-  filters?: { search?: string };
+  filters?: { search?: string; size?: string };
+  permissions?: { can_create: boolean; can_update: boolean; can_delete: boolean };
 }>()
 
 // --- CONFIGURACIÓN ---
@@ -119,13 +120,21 @@ function handleSubmit() {
 
 // --- BUSCADOR ---
 const handleSearch = useDebounceFn((val: string) => {
-  router.get(window.location.pathname, { search: val }, { 
-    preserveState: true, 
-    replace: true 
+  router.get(window.location.pathname, { search: val, size: props.filters?.size }, {
+    preserveState: true,
+    replace: true
   })
 }, 500)
 
 watch(search, handleSearch)
+
+// --- TAMAÑO DE PÁGINA ---
+function handlePageSizeChange(newSize: string) {
+  router.get(window.location.pathname, { search: search.value, size: newSize, page: 1 }, {
+    preserveState: true,
+    replace: true
+  })
+}
 
 // --- TOGGLE ESTATUS EMPRESA ---
 const togglingStatus = ref(false)
@@ -151,11 +160,20 @@ async function toggleEmpresaStatus(row: any) {
   }
 }
 
-// --- ACCIONES TABLA ---
+// --- ACCIONES TABLA (según permisos que calcula el backend por rol/tipo) ---
+const canCreate = computed(() => props.permissions?.can_create ?? true)
+const canUpdate = computed(() => props.permissions?.can_update ?? true)
+const canDelete = computed(() => props.permissions?.can_delete ?? true)
+
 const tableActions = computed(() => {
-  const actions: any[] = [
-    { key: 'edit', handler: openEditModal },
-    {
+  const actions: any[] = []
+
+  if (canUpdate.value) {
+    actions.push({ key: 'edit', handler: openEditModal })
+  }
+
+  if (canDelete.value) {
+    actions.push({
       key: 'delete',
       handler: (row: any) => {
         if (confirm(`¿Está seguro de eliminar a ${row.nombre_completo}?`)) {
@@ -164,8 +182,8 @@ const tableActions = computed(() => {
           })
         }
       }
-    }
-  ]
+    })
+  }
 
   return actions
 })
@@ -195,13 +213,14 @@ const tableActions = computed(() => {
         :page-size="String(items.per_page)"
         :current-page="items.current_page"
 
-        :show-add-button="true"
+        :show-add-button="canCreate"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`"
         add-button-label-short="+"
 
-        :auto-add-actions-column="true"
+        :auto-add-actions-column="tableActions.length > 0"
 
         @add="openCreateModal"
+        @update:pageSize="handlePageSizeChange"
       >
         <template #cell-estatus="{ row }">
           <button

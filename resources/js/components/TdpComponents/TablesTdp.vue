@@ -15,7 +15,7 @@ const props = defineProps<{
 
 const carritoPagination = ref({
   page: 1,
-  pageSize: '10'
+  pageSize: '15'
 });
 
 // ===== evita errores cuando es null =====
