@@ -68,7 +68,12 @@ registerRoute(
   ({ request }) => request.mode === 'navigate',
   new NetworkFirst({
     cacheName: 'pages-cache',
-    networkTimeoutSeconds: 5,
+    // Sin networkTimeoutSeconds: con un timeout, Workbox trata una
+    // respuesta simplemente LENTA (ej. /nuevo-reporte y /tdp, que en la
+    // misma carga resuelven varias consultas: representantes, productos,
+    // mayoristas/actividades/eventos) igual que una red caida, y cae al
+    // shell offline (login) aunque el servidor si iba a responder. Sin
+    // limite, solo se usa el fallback cuando el fetch realmente falla.
     plugins: [
       new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 }),
       new CacheableResponsePlugin({ statuses: [0, 200] }),
