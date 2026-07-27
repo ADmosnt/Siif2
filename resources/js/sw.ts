@@ -29,6 +29,24 @@ self.addEventListener('message', (event) => {
   }
 })
 
+// registerType: 'autoUpdate' (vite.config.ts) asume que un service worker
+// nuevo toma control apenas se instala. Pero eso solo pasa si el SW lo pide
+// explicitamente: nada en la app llamaba a skipWaiting() (el mensaje de
+// arriba nunca lo enviaba nadie) ni a clients.claim(), asi que un SW nuevo
+// se quedaba en estado "waiting" indefinidamente y el viejo seguia
+// controlando todas las pestañas abiertas. Con cada build posterior el
+// desfasaje entre el SW activo y los assets/precache reales crecia (HTML
+// desactualizado con token CSRF viejo -> 419 en el primer intento, PNGs u
+// otros assets nuevos que el precache viejo no conocia -> "unexpected
+// error" del ServiceWorker), y solo se corregia a mano cerrando pestañas o
+// limpiando el Service Worker. Con skipWaiting()+clients.claim(), el SW
+// nuevo reemplaza al viejo apenas termina de instalarse.
+self.skipWaiting()
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 // precacheAndRoute() no solo precachea: tambien registra una ruta que
 // sirve esas URLs directo desde cache (cache-first) para cualquier
 // request que las pida, SIN pasar por el NetworkFirst de mas abajo. Eso
