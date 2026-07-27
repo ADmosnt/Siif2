@@ -6,7 +6,7 @@
 // normal (online) de ninguna otra pagina. navigateFallback (modo generateSW)
 // no sirve para esto: siempre sirve el precache para las URLs que abarca,
 // tambien estando online.
-import { cleanupOutdatedCaches, precacheAndRoute, matchPrecache } from 'workbox-precaching'
+import { cleanupOutdatedCaches, precache, precacheAndRoute, matchPrecache } from 'workbox-precaching'
 import { registerRoute, setCatchHandler } from 'workbox-routing'
 import { NetworkFirst, CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
@@ -29,7 +29,27 @@ self.addEventListener('message', (event) => {
   }
 })
 
-precacheAndRoute(self.__WB_MANIFEST)
+// precacheAndRoute() no solo precachea: tambien registra una ruta que
+// sirve esas URLs directo desde cache (cache-first) para cualquier
+// request que las pida, SIN pasar por el NetworkFirst de mas abajo. Eso
+// pisaba /login, /tdp y /nuevo-reporte: quedaban serviditas siempre
+// desde el precache (incluso online, ya logueado), y si ese precache se
+// habia poblado antes del login (ej. la primera visita, sin sesion,
+// donde /tdp y /nuevo-reporte redirigen a /login) el usuario terminaba
+// viendo el login en vez del modulo real. Estas 3 URLs se precachean
+// (quedan disponibles via matchPrecache en el catch handler) pero SIN
+// auto-ruta, para que la navegacion normal siempre intente la red primero.
+const SHELL_URLS = ['/login', '/tdp', '/nuevo-reporte']
+const manifestEntries = self.__WB_MANIFEST
+const shellEntries = manifestEntries.filter((entry) =>
+  SHELL_URLS.includes(typeof entry === 'string' ? entry : entry.url),
+)
+const assetEntries = manifestEntries.filter((entry) =>
+  !SHELL_URLS.includes(typeof entry === 'string' ? entry : entry.url),
+)
+
+precacheAndRoute(assetEntries)
+precache(shellEntries)
 cleanupOutdatedCaches()
 
 registerRoute(
