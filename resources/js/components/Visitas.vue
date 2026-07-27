@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import GlobalTable from '@/components/GlobalTable.vue'
 import { ref, computed } from 'vue'
-import { useFileDownload } from '@/composables/useFileDownload'
 
 interface Material {
   Reporte:  number | string
@@ -49,8 +48,6 @@ function onPageSizeM(newSize: string) {
   pageM.value     = 1
 }
 
-const { downloading, descargar: descargarArchivo } = useFileDownload()
-
 function descargar(tabla: 'visitas' | 'muestras', tipo: 'excel' | 'pdf') {
   const params = new URLSearchParams({ tabla, tipo })
 
@@ -61,9 +58,7 @@ function descargar(tabla: 'visitas' | 'muestras', tipo: 'excel' | 'pdf') {
     }
   })
 
-  const nombreBase = tabla === 'muestras' ? 'muestras_entregadas' : 'reporte_visitas'
-  const filename = `${nombreBase}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`
-  descargarArchivo('/exportar/visitas', params, filename)
+  window.location.href = `/exportar/visitas?${params}`
 }
 
 const columnsVisitas = [
@@ -91,13 +86,6 @@ const columnsMuestras = [
 </script>
 
 <template>
-  <div v-if="downloading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-    <div class="flex flex-col items-center gap-3 rounded-lg bg-white dark:bg-gray-800 px-6 py-5 shadow-xl">
-      <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
-      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Generando archivo...</span>
-    </div>
-  </div>
-
   <div class="mt-6">
     <h2 class="text-lg font-semibold mb-2 px-1">Reportes de visitas</h2>
     <GlobalTable

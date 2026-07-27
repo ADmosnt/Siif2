@@ -105,7 +105,7 @@ class ConciliarFacturaController extends Controller
             if (!$pivotData) {
                 return redirect()->back()->withInput()->with('error', "Producto {$producto['id']} no encontrado en la orden");
             }
-            $cantidadOriginal = $pivotData->pivot->cantidad_solicitada ?? 0;
+            $cantidadOriginal = $pivotData->cantidad_solicitada ?? 0;
             $faltantes = $cantidadOriginal - $producto['despachadas'];
             $subtotal += $producto['despachadas'] * $precioReal;
             $totalConciliadas += $producto['despachadas'];

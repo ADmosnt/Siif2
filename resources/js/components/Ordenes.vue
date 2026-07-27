@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import GlobalTable from '@/components/GlobalTable.vue'
-import { useFileDownload } from '@/composables/useFileDownload'
 
 interface Producto {
   Cliente:          string
@@ -62,8 +61,6 @@ function onPageSizeP(newSize: string) {
   pageP.value     = 1
 }
 
-const { downloading, descargar: descargarArchivo } = useFileDownload()
-
 function descargar(tabla: 'ordenes' | 'productos', tipo: 'excel' | 'pdf') {
   const params = new URLSearchParams({ tabla, tipo })
   Object.entries(props.filtrosActivos).forEach(([k, v]) => {
@@ -71,10 +68,7 @@ function descargar(tabla: 'ordenes' | 'productos', tipo: 'excel' | 'pdf') {
       params.append(k, typeof v === 'object' ? JSON.stringify(v) : String(v))
     }
   })
-
-  const nombreBase = tabla === 'productos' ? 'estadisticas_productos' : 'reporte_ordenes'
-  const filename = `${nombreBase}.${tipo === 'pdf' ? 'pdf' : 'xlsx'}`
-  descargarArchivo('/exportar/ordenes', params, filename)
+  window.location.href = `/exportar/ordenes?${params}`
 }
 
 // ─── Columnas ─────────────────────────────────────────────────────────────────
@@ -108,13 +102,6 @@ const columnsProductos = [
 </script>
 
 <template>
-  <div v-if="downloading" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-    <div class="flex flex-col items-center gap-3 rounded-lg bg-white dark:bg-gray-800 px-6 py-5 shadow-xl">
-      <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600"></div>
-      <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Generando archivo...</span>
-    </div>
-  </div>
-
   <div class="mt-6">
       <div class="flex flex-wrap gap-3 mb-3 px-1">
     <div class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2">

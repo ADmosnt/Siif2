@@ -57,10 +57,10 @@
         <tbody>
             @foreach($estadisticas as $item)
                 <tr class="{{ $loop->even ? 'bg-gray' : '' }}">
-                    <td>{{ $item->supervisor_nombre ?? 'N/A' }}</td>
-                    <td>{{ $item->rfv_nombre ?? 'N/A' }}</td>
-                    <td>{{ $item->zona_nombre ?? 'N/A' }}</td>
-                    <td>{{ $item->ruta_descripcion ?? 'N/A' }}</td>
+                    <td>{{ $item->supervisor->nombre_completo_razon_social ?? 'N/A' }}</td>
+                    <td>{{ $item->representante->nombre_completo_razon_social ?? 'N/A' }}</td>
+                    <td>{{ $item->zona->descripcion_zona ?? 'N/A' }}</td>
+                    <td>{{ $item->ruta->Descripcion ?? 'N/A' }}</td>
                     <td class="text-center">{{ $item->MesRegistro }}</td>
                     <td class="text-right">{{ number_format($item->porce_cobertura, 2) }}%</td>
                     <td class="text-right">{{ number_format($item->productoEsperado, 0) }}</td>

@@ -1,7 +1,7 @@
 <!--resources/js/pages/Administrar/seccion-->
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { Head, router, useForm, usePage } from '@inertiajs/vue3'
+import { Head, router, useForm } from '@inertiajs/vue3'
 import { configMap } from '@/configs/admin'
 import AppLayout from '@/layouts/AppLayout.vue'
 import GlobalTable from '@/components/GlobalTable.vue'
@@ -17,28 +17,9 @@ const props = defineProps<{
   filters?: { search?: string };
 }>()
 
-// --- PERMISOS POR ROL ---
-// El backend ya bloquea create/update/destroy segun el rol (defensa real);
-// esto solo controla si se muestran los botones/columna en la UI.
-const page = usePage()
-const userRole = computed(() => (page.props.auth as any)?.role as string | undefined)
-const canEdit = computed(() => {
-  const roles = config.value.rolesQuePuedenEditar
-  if (!roles) return true
-  return !!userRole.value && roles.includes(userRole.value)
-})
-
-// --- PAGINACIÓN (normaliza forma de respuesta) ---
-// PersonaResource::collection()/ProductoResource::collection() envuelven el
-// paginator en { data, links, meta: { current_page, per_page, total } };
-// items.per_page/total/current_page (planos) solo existen si el controlador
-// devuelve el paginator sin envolver en un Resource. Sin esto, con la forma
-// envuelta el Select de tamano de pagina recibe "undefined" y no muestra nada.
-const paginationMeta = computed(() => props.items.meta || props.items)
-
 // --- CONFIGURACIÓN ---
-const config = computed(() => configMap[props.tipo] || {
-  title: 'Error',
+const config = computed(() => configMap[props.tipo] || { 
+  title: 'Error', 
   routePrefix: '', 
   breadcrumbs: [],
   columns: [], 
@@ -138,32 +119,13 @@ function handleSubmit() {
 
 // --- BUSCADOR ---
 const handleSearch = useDebounceFn((val: string) => {
-  router.get(window.location.pathname, { search: val }, {
-    preserveState: true,
-    replace: true
+  router.get(window.location.pathname, { search: val }, { 
+    preserveState: true, 
+    replace: true 
   })
 }, 500)
 
 watch(search, handleSearch)
-
-// --- PAGINACION ---
-// GlobalTable/TablePagination solo emiten estos eventos, no navegan por su
-// cuenta: sin estos handlers, cambiar de pagina o de tamano no tiene efecto.
-function handlePageChange(page: number) {
-  router.get(window.location.pathname, {
-    search: search.value,
-    page,
-    size: paginationMeta.value.per_page,
-  }, { preserveState: true, replace: true })
-}
-
-function handlePageSizeChange(size: string) {
-  router.get(window.location.pathname, {
-    search: search.value,
-    size,
-    page: 1,
-  }, { preserveState: true, replace: true })
-}
 
 // --- TOGGLE ESTATUS EMPRESA ---
 const togglingStatus = ref(false)
@@ -191,9 +153,7 @@ async function toggleEmpresaStatus(row: any) {
 
 // --- ACCIONES TABLA ---
 const tableActions = computed(() => {
-  if (!canEdit.value) return []
-
-  return [
+  const actions: any[] = [
     { key: 'edit', handler: openEditModal },
     {
       key: 'delete',
@@ -206,6 +166,8 @@ const tableActions = computed(() => {
       }
     }
   ]
+
+  return actions
 })
 </script>
 
@@ -229,19 +191,17 @@ const tableActions = computed(() => {
         :actions="tableActions"
 
         :links="items.meta ? items.meta.links : items.links"
-        :total-records="paginationMeta.total"
-        :page-size="String(paginationMeta.per_page)"
-        :current-page="paginationMeta.current_page"
+        :total-records="items.total"
+        :page-size="String(items.per_page)"
+        :current-page="items.current_page"
 
-        :show-add-button="canEdit"
+        :show-add-button="true"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`"
         add-button-label-short="+"
 
-        :auto-add-actions-column="canEdit"
+        :auto-add-actions-column="true"
 
         @add="openCreateModal"
-        @update:page="handlePageChange"
-        @update:pageSize="handlePageSizeChange"
       >
         <template #cell-estatus="{ row }">
           <button

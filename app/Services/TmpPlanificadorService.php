@@ -125,7 +125,7 @@ class TmpPlanificadorService
                     'idSupervisor' => $item->idSupervisor,
                     'nombre_supervisor' => $item->supervisor->nombre_completo_razon_social ?? 'No encontrado',
                     'idstatus' => $item->idstatus,
-                    'estatus_visita' => $item->estatus_visita,
+                    'idstatus' => $item->idstatus,
                     'userRole' => $currentUserRole,
                 ];
             });
@@ -188,7 +188,7 @@ class TmpPlanificadorService
             throw new \Exception('Visita temporal no encontrada.', 404);
         }
 
-        if ($visita->estatus_visita != TTmpPlanificadore::ESTATUS_TEMPORAL) {
+        if ($visita->idstatus != TTmpPlanificadore::ESTATUS_TEMPORAL) {
             throw new \Exception('No se puede editar esta visita.', 403);
         }
 
@@ -243,7 +243,7 @@ class TmpPlanificadorService
             throw new \Exception('Visita temporal no encontrada.', 404);
         }
 
-        if ($visita->estatus_visita != TTmpPlanificadore::ESTATUS_TEMPORAL) {
+        if ($visita->idstatus != TTmpPlanificadore::ESTATUS_TEMPORAL) {
             throw new \Exception('No se puede eliminar esta visita.', 403);
         }
 

@@ -50,26 +50,9 @@ async function registerSubscription() {
             return
         }
 
-        const applicationServerKey = urlBase64ToUint8Array(vapidKey)
-
-        // Si el navegador ya tiene una suscripcion con una clave VAPID distinta
-        // a la actual (p.ej. tras rotar las claves en el servidor), subscribe()
-        // falla con "A subscription with a different application server key
-        // already exists". Hay que dar de baja esa suscripcion vieja primero.
-        const existing = await registration.pushManager.getSubscription()
-        if (existing) {
-            const existingKey = new Uint8Array(existing.options.applicationServerKey as ArrayBuffer)
-            const sameKey = existingKey.length === applicationServerKey.length
-                && existingKey.every((byte, i) => byte === applicationServerKey[i])
-
-            if (!sameKey) {
-                await existing.unsubscribe()
-            }
-        }
-
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
         })
 
         const subJson = subscription.toJSON()

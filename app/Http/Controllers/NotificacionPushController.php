@@ -9,12 +9,9 @@ use App\Notifications\SiifPushNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
-use NotificationChannels\WebPush\Events\NotificationSent as WebPushNotificationSent;
-use NotificationChannels\WebPush\Events\NotificationFailed as WebPushNotificationFailed;
 
 class NotificacionPushController extends Controller
 {
@@ -78,42 +75,25 @@ class NotificacionPushController extends Controller
                 ->get();
         }
 
-        // Enviar push notification a cada destinatario que tenga suscripción.
-        // $enviados/$fallidos se basan en el resultado REAL de la entrega
-        // (eventos que dispara el paquete de webpush), no solo en si existia
-        // una suscripcion - antes se contaba como "enviado" con solo intentar,
-        // sin saber si el push realmente llego.
-        $conSuscripcion = 0;
+        // Enviar push notification a cada destinatario que tenga suscripción
         $enviados = 0;
-        $fallidos = 0;
-
-        Event::listen(WebPushNotificationSent::class, function () use (&$enviados) {
-            $enviados++;
-        });
-        Event::listen(WebPushNotificationFailed::class, function () use (&$fallidos) {
-            $fallidos++;
-        });
-
         foreach ($destinatarios as $destinatario) {
             if ($destinatario->pushSubscriptions()->exists()) {
-                $conSuscripcion++;
                 $destinatario->notify(new SiifPushNotification(
                     $titulo,
                     $request->descripcion,
                     $notificacion->idNotificacion
                 ));
+                $enviados++;
             }
         }
 
         Log::info('Notificación push enviada', [
             'emisor' => $user->name,
+            'destinatarios_push' => $enviados,
             'total_destinatarios' => $destinatarios->count(),
-            'con_suscripcion' => $conSuscripcion,
-            'push_entregados' => $enviados,
-            'push_fallidos' => $fallidos,
         ]);
 
-        return back()->with('success', "Notificación enviada a {$destinatarios->count()} usuario(s). Push entregado a {$enviados} de {$conSuscripcion} suscripciones."
-            . ($fallidos > 0 ? " ({$fallidos} fallaron, ver logs)" : ''));
+        return back()->with('success', "Notificación enviada a {$destinatarios->count()} usuario(s). Push enviado a {$enviados}.");
     }
 }

@@ -2,8 +2,6 @@
 //App\Services\AccessControlService.php 
 namespace App\Services;
 
-use App\Models\RClienteRfv;
-use App\Models\TPersona;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -18,22 +16,6 @@ class AccessControlService
         if (!$user) return false;
 
         return in_array($user->idgrupo_persona, $roles);
-    }
-
-    /**
-     * Un RFV solo puede acceder (ver/editar/eliminar) a sus propios
-     * clientes (relacion r_cliente_rfv). Cualquier otro rol no tiene esta
-     * restriccion aqui (ya se filtra por fabricante en otras capas).
-     */
-    public function canAccessCliente(string $idCliente, TPersona $user): bool
-    {
-        if ($user->idgrupo_persona !== TPersona::TIPO_REPRESENTANTE) {
-            return true;
-        }
-
-        return RClienteRfv::where('id_RFV', $user->idPersona)
-            ->where('id_cliente', $idCliente)
-            ->exists();
     }
 
     /**

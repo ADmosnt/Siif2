@@ -11,13 +11,7 @@ class CheckActiveStatus
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // Comparacion estricta: con == 0, un idestatus NULL (columna nullable)
-        // tambien evalua como igual a 0 en PHP y desloguea al usuario en
-        // silencio en cualquier request, aunque su cuenta nunca haya sido
-        // desactivada explicitamente.
-        $status = Auth::user()?->idestatus;
-
-        if (Auth::check() && $status !== null && (int) $status === 0) {
+        if (Auth::check() && Auth::user()->idestatus == 0) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
