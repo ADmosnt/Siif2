@@ -97,31 +97,63 @@ class AgendaController extends Controller
         return response()->json($this->representanteService->searchClientesData($request));
     }
     /**
-     * Formatea los links de paginación para el formato esperado por el frontend
+     * Formatea los links de paginación para el formato esperado por el frontend.
+     * Usa una ventana alrededor de la página actual (+ primeras/últimas páginas)
+     * con elipsis, en lugar de listar todas las páginas de corrido.
      */
     private function formatearLinks($paginator): array
     {
         $links = [];
+        $currentPage = $paginator->currentPage();
+        $lastPage = $paginator->lastPage();
+        $onEachSide = 2;
 
-        // Link a la primera página
+        // Link a la página anterior
         $links[] = [
-            'url' => $paginator->url(1),
+            'url' => $paginator->previousPageUrl(),
             'label' => '&laquo; Previous',
             'active' => false
         ];
 
-        // Links de las páginas
-        foreach (range(1, $paginator->lastPage()) as $page) {
-            $links[] = [
-                'url' => $paginator->url($page),
-                'label' => (string) $page,
-                'active' => $page === $paginator->currentPage()
-            ];
+        $pageLink = fn (int $page) => [
+            'url' => $paginator->url($page),
+            'label' => (string) $page,
+            'active' => $page === $currentPage
+        ];
+        $ellipsis = ['url' => null, 'label' => '...', 'active' => false];
+
+        if ($lastPage <= ($onEachSide * 2) + 6) {
+            // Pocas páginas: se muestran todas sin elipsis
+            foreach (range(1, $lastPage) as $page) {
+                $links[] = $pageLink($page);
+            }
+        } else {
+            foreach (range(1, 2) as $page) {
+                $links[] = $pageLink($page);
+            }
+
+            $start = max(3, $currentPage - $onEachSide);
+            if ($start > 3) {
+                $links[] = $ellipsis;
+            }
+
+            $end = min($lastPage - 2, $currentPage + $onEachSide);
+            for ($page = $start; $page <= $end; $page++) {
+                $links[] = $pageLink($page);
+            }
+
+            if ($end < $lastPage - 2) {
+                $links[] = $ellipsis;
+            }
+
+            foreach (range($lastPage - 1, $lastPage) as $page) {
+                $links[] = $pageLink($page);
+            }
         }
 
-        // Link a la última página
+        // Link a la página siguiente
         $links[] = [
-            'url' => $paginator->url($paginator->lastPage()),
+            'url' => $paginator->nextPageUrl(),
             'label' => 'Next &raquo;',
             'active' => false
         ];
