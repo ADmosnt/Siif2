@@ -322,17 +322,17 @@ const reiniciarFiltros = () => {
 onMounted(async () => {
   await cargarRfvs()
 
-  // Setup inicial para RFV: auto-seleccionar si solo tiene un RFV
+  // Setup inicial para RFV: auto-seleccionar si solo tiene un RFV.
+  // No se recarga la página con AgendaService.actualizarFiltros: el
+  // backend ya scopea "clientes" y "estadisticas" al RFV logueado sin
+  // depender del query string, así que esa recarga era redundante con
+  // la carga inicial y el navegador la cancelaba (NS_BINDING_ABORTED),
+  // lo que el interceptor de axios mostraba como "Error de conexión".
   if (user.value.idgrupo_persona === 'RFV' &&
       rfvOptions.value.length === 1 &&
       !props.value.filtros?.idRfv) {
     selectedRfv.value = rfvOptions.value[0]
     await cargarClientes()
-    AgendaService.actualizarFiltros({
-      ...props.value.filtros,
-      idRfv: rfvOptions.value[0].value,
-      page: 1
-    })
   }
 })
 
