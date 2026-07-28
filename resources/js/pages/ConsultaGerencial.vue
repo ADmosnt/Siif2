@@ -12,6 +12,7 @@ import ComboSelect from "@/components/ComboSelect.vue"
 import GlobalTable from '@/components/GlobalTable.vue'
 import SimpleDatePicker from '@/components/simpleDatePicker.vue'
 import GpsModal from '@/components/GPS/GpsModal.vue'
+import { useFileDownload } from '@/composables/useFileDownload'
 import {Tooltip,TooltipContent,TooltipTrigger,} from '@/components/ui/tooltip'
 import { type PaginatedData } from '@/types/pagination';
 
@@ -362,6 +363,8 @@ const summaries = computed(() => [
 // =================================================================
 // EXPORTACIÓN
 // =================================================================
+const { downloading, descargar: descargarArchivo } = useFileDownload()
+
 const downloadReport = (type: 'pdf' | 'excel') => {
   const routeName = type === 'pdf' ? 'gerencial.export.pdf' : 'gerencial.export.excel'
   const params = new URLSearchParams()
@@ -379,7 +382,8 @@ const downloadReport = (type: 'pdf' | 'excel') => {
     params.append('fechaFin', format(fechaFin.value.toDate(getLocalTimeZone()), 'yyyy-MM-dd'))
   }
 
-  window.location.href = `${route(routeName)}?${params.toString()}`
+  const filename = type === 'pdf' ? 'reporte-gerencial.pdf' : 'reporte-gerencial.xlsx'
+  descargarArchivo(route(routeName), params, filename)
 }
 
 const downloadPdf   = () => downloadReport('pdf')
@@ -505,6 +509,14 @@ const isGpsButtonDisabled = computed(() =>
             </TooltipContent>
           </Tooltip>
         </div>
+      </div>
+
+      <div
+        v-if="downloading"
+        class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2 mt-4"
+      >
+        <div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+        <span>Generando archivo, esto puede tardar unos segundos…</span>
       </div>
 
       <!-- TABLA -->

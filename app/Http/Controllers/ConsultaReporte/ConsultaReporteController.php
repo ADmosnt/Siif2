@@ -82,6 +82,13 @@ class ConsultaReporteController extends Controller
 
 
         if ($tipo === 'pdf') {
+            // dompdf es mucho mas pesado en memoria/tiempo que el export a
+            // Excel al renderizar tablas grandes; se amplia el limite SOLO
+            // para esta accion (no queda global) en vez de fallar en
+            // silencio con reportes con muchos datos.
+            set_time_limit(300);
+            ini_set('memory_limit', '1024M');
+
             // PDF siempre incluye ambas tablas en un solo documento
             $pdf = Pdf::loadView('exports.visitas', [
                 'visitas'    => $data['visitas'],
@@ -120,6 +127,10 @@ class ConsultaReporteController extends Controller
         $montoTotal    = collect($data['ordenes'])->sum('totalOrden');
 
         if ($tipo === 'pdf') {
+            // Ver comentario equivalente en exportarVisitas().
+            set_time_limit(300);
+            ini_set('memory_limit', '1024M');
+
             $pdf = Pdf::loadView('exports.ordenes', [
                 'ordenes'      => $data['ordenes'],
                 'productos'    => $data['productos'],

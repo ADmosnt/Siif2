@@ -152,7 +152,12 @@ class GerencialController extends Controller
 
     public function exportPdf(Request $request){
     $estadisticas = $this->applyFilters($request)->latest('fechaRegistro')->get();
-    
+
+    // dompdf es mucho mas pesado en memoria/tiempo que un export a Excel
+    // con tablas grandes; se amplia el limite SOLO para esta accion.
+    set_time_limit(300);
+    ini_set('memory_limit', '1024M');
+
     $pdf = Pdf::loadView('pdf.gerencial', compact('estadisticas'))
                 ->setPaper('a4', 'landscape');
                 

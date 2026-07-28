@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import GlobalTable from '@/components/GlobalTable.vue'
 import { ref, computed } from 'vue'
+import { useFileDownload } from '@/composables/useFileDownload'
 
 interface Material {
   Reporte:  number | string
@@ -48,6 +49,8 @@ function onPageSizeM(newSize: string) {
   pageM.value     = 1
 }
 
+const { downloading, descargar: descargarArchivo } = useFileDownload()
+
 function descargar(tabla: 'visitas' | 'muestras', tipo: 'excel' | 'pdf') {
   const params = new URLSearchParams({ tabla, tipo })
 
@@ -58,7 +61,12 @@ function descargar(tabla: 'visitas' | 'muestras', tipo: 'excel' | 'pdf') {
     }
   })
 
-  window.location.href = `/exportar/visitas?${params}`
+  // El PDF siempre trae ambas tablas juntas; el Excel es por tabla.
+  const filename = tipo === 'pdf'
+    ? 'reporte_visitas.pdf'
+    : (tabla === 'muestras' ? 'muestras_entregadas.xlsx' : 'reporte_visitas.xlsx')
+
+  descargarArchivo('/exportar/visitas', params, filename)
 }
 
 const columnsVisitas = [
@@ -86,6 +94,14 @@ const columnsMuestras = [
 </script>
 
 <template>
+  <div
+    v-if="downloading"
+    class="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-2 mb-4"
+  >
+    <div class="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+    <span>Generando archivo, esto puede tardar unos segundos…</span>
+  </div>
+
   <div class="mt-6">
     <h2 class="text-lg font-semibold mb-2 px-1">Reportes de visitas</h2>
     <GlobalTable
