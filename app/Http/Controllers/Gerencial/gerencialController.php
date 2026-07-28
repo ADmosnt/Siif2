@@ -151,7 +151,13 @@ class GerencialController extends Controller
     }
 
     public function exportPdf(Request $request){
-    $estadisticas = $this->applyFilters($request)->latest('fechaRegistro')->get();
+    // La vista necesita supervisor/representante/zona/ruta (ver
+    // pdf.gerencial.blade.php); exportExcel() ya las precargaba con
+    // with(), pero aca faltaba y esas columnas quedaban en "N/A".
+    $estadisticas = $this->applyFilters($request)
+        ->with(['supervisor', 'representante', 'zona', 'ruta'])
+        ->latest('fechaRegistro')
+        ->get();
 
     // dompdf es mucho mas pesado en memoria/tiempo que un export a Excel
     // con tablas grandes; se amplia el limite SOLO para esta accion.
