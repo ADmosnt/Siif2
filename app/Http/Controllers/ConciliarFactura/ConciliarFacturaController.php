@@ -209,12 +209,15 @@ class ConciliarFacturaController extends Controller
                         'comentario_entrega' => "Faltantes de orden #{$orden->idorden} (Factura: {$request->nfactura})",
                     ]);
 
+                    $itemOrden = 0;
                     foreach ($productosActualizados as $p) {
                         if ($p['faltantes'] > 0) {
+                            $itemOrden++;
                             $productoModel = TProducto::withoutGlobalScopes()->find($p['id']);
                             $nuevaOrden->productos()->attach($p['id'], [
                                 'idOperador' => $orden->idOperador,
                                 'idFabricante' => $orden->idFabricante,
+                                'iditem_orden' => $itemOrden,
                                 'item_price' => $p['precio'],
                                 'cantidad_solicitada' => $p['faltantes'],
                                 'nombreproducto' => $productoModel->nombre_producto ?? '',
