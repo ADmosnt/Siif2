@@ -167,6 +167,10 @@ class PersonaAdminController extends Controller
     {
     $tipo = $request->route('tipo');
 
+    if (!$this->checkGlobalPermission($tipo, 'create')) {
+        abort(403, 'No tiene permisos para crear este registro.');
+    }
+
     // Reglas base comunes para todos
     $reglas = [
         'nombre'    => 'required|string|max:100',
@@ -239,6 +243,10 @@ class PersonaAdminController extends Controller
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
 
+        if (!$this->checkGlobalPermission($tipo, 'edit')) {
+            abort(403, 'No tiene permisos para editar este registro.');
+        }
+
         try {
             $this->personaService->actualizarPersona($id, $request->all());
             return back()->with('success', 'Registro actualizado');
@@ -253,6 +261,12 @@ class PersonaAdminController extends Controller
      */
     public function destroy(Request $request, $id)
     {
+        $tipo = $request->route()->defaults['tipo'] ?? null;
+
+        if (!$this->checkGlobalPermission($tipo, 'delete')) {
+            abort(403, 'No tiene permisos para eliminar este registro.');
+        }
+
         try {
             $this->personaService->eliminarPersona($id);
             return back()->with('success', 'Registro eliminado');

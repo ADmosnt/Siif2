@@ -213,6 +213,7 @@ export const configMap: Record<string, CrudConfig> = {
       { name: 'nombre', label: 'Razón Social / Nombre', type: 'text', class: 'md:col-span-2' },
       { name: 'idOperador', label: 'Código de Operador', type: 'text', class: 'md:col-span-1' },
       { name: 'idFabricante', label: 'Código de Fabricante', type: 'text', class: 'md:col-span-2' },
+      { name: 'tipo_doc', label: 'Tipo', type: 'combobox', class: 'md:col-span-1' },
       { name: 'documento', label: 'RIF / Documento', type: 'text', class: 'md:col-span-1' },
       { name: 'email', label: 'Correo Electrónico', type: 'email', class: 'md:col-span-2' },
       { name: 'telefono', label: 'Teléfono', type: 'text', class: 'md:col-span-1' },

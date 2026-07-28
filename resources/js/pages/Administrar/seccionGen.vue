@@ -209,9 +209,9 @@ const tableActions = computed(() => {
         :actions="tableActions"
 
         :links="items.meta ? items.meta.links : items.links"
-        :total-records="items.total"
-        :page-size="String(items.per_page)"
-        :current-page="items.current_page"
+        :total-records="items.meta ? items.meta.total : items.total"
+        :page-size="String(items.meta ? items.meta.per_page : items.per_page)"
+        :current-page="items.meta ? items.meta.current_page : items.current_page"
 
         :show-add-button="canCreate"
         :add-button-label="`Agregar ${config.title.split(' ').pop()}`"
