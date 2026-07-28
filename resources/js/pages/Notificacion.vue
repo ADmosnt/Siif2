@@ -31,6 +31,7 @@ interface NotificacionItem {
     fecha: string
     idestatus: number
     idPersona: string
+    idFabricante: string
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -99,6 +100,15 @@ const tipoOptions = computed(() => {
         value: String(tipo.id),
     }))
 })
+
+// Texto del destinatario para la bandeja: si idPersona viene vacio, la
+// notificacion fue general (para toda la empresa), no "para nadie".
+function destinatarioLabel(notif: NotificacionItem): string {
+    if (notif.idPersona) return notif.idPersona
+
+    const empresa = props.empresas.find(e => e.idFabricante === notif.idFabricante)
+    return empresa ? `Toda la empresa (${empresa.nombre_completo_razon_social})` : 'Toda la empresa'
+}
 
 // Inicializar empresa seleccionada según contexto activo
 onMounted(() => {
@@ -308,11 +318,8 @@ const flash = computed(() => (page.props as any).flash || {})
                                 >
                                     {{ notif.tipo }}
                                 </span>
-                                <span
-                                    v-if="notif.idPersona"
-                                    class="text-xs text-gray-400 dark:text-gray-500"
-                                >
-                                    Para: {{ notif.idPersona }}
+                                <span class="text-xs text-gray-400 dark:text-gray-500">
+                                    Para: {{ destinatarioLabel(notif) }}
                                 </span>
                             </div>
                             <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">

@@ -44,11 +44,16 @@ class NotificacionPushController extends Controller
             return back()->withErrors($validator);
         }
 
-        // Guardar en t_notificaciones
+        // Guardar en t_notificaciones. idPersona: si es para un RFV
+        // especifico lleva su id; si es general (sin RFV seleccionado) debe
+        // quedar en blanco (asi lo documenta la propia columna en la BD) -
+        // no el id de quien la envia, que es lo que hacia esto antes y
+        // mostraba "Para: SIIFADMIN" en vez de indicar que fue para toda
+        // la empresa.
         $notificacion = TNotificacion::create([
             'idOperador' => $user->idOperador,
             'idFabricante' => $user->idFabricante,
-            'idPersona' => $request->idPersona_destino ?? $user->idPersona,
+            'idPersona' => $request->idPersona_destino ?? '',
             'idtipo' => $request->idtipo ?? 1,
             'descripcion_notoficacion' => $request->descripcion,
             'fecha_registro' => Carbon::now(),

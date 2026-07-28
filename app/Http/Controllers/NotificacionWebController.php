@@ -75,6 +75,7 @@ class NotificacionWebController extends Controller
                 'fecha' => $n->fecha_registro,
                 'idestatus' => $n->idestatus,
                 'idPersona' => $n->idPersona,
+                'idFabricante' => $n->idFabricante,
             ];
         });
 
