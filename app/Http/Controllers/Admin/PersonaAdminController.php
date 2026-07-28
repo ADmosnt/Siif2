@@ -12,6 +12,7 @@ use App\Models\TEspecialidade;
 use App\Models\TClasePersona;
 use App\Models\TRankingCliente;
 use App\Models\TFrecuenciaVisita;
+use App\Models\RClienteRfv;
 use App\Services\CompanyContextService;
 use App\Services\RepresentanteClienteService;
 use App\Services\AccessControlService;
@@ -75,6 +76,19 @@ class PersonaAdminController extends Controller
         }
 
         return true;
+    }
+
+    /**
+     * Un RFV solo puede editar/eliminar sus propios clientes (los que le
+     * fueron asignados en r_cliente_rfv), no los de otros vendedores. El
+     * listado ya viene filtrado para RFV, pero eso no evita que alguien
+     * mande el id de un cliente ajeno directo al update/destroy.
+     */
+    private function clientePerteneceARfv(string $clienteId, string $idRfv): bool
+    {
+        return RClienteRfv::where('id_RFV', $idRfv)
+            ->where('id_cliente', $clienteId)
+            ->exists();
     }
 
     private function getOptions($tipo)
@@ -227,6 +241,12 @@ class PersonaAdminController extends Controller
     /** @var array $validated */
     $validated = $request->validate($reglas);
 
+    // Un RFV solo puede crear clientes asignados a sí mismo, sin importar
+    // qué "vendedor" haya mandado la petición.
+    if ($tipo === 'clientes' && Auth::user()->idgrupo_persona === 'RFV') {
+        $validated['vendedor'] = Auth::user()->idPersona;
+    }
+
     try {
         $this->personaService->crearPersona($tipo, $validated);
         return redirect()->back()->with('success', 'Registro creado con éxito');
@@ -242,9 +262,14 @@ class PersonaAdminController extends Controller
     public function update(Request $request, $id)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
 
         if (!$this->checkGlobalPermission($tipo, 'edit')) {
             abort(403, 'No tiene permisos para editar este registro.');
+        }
+
+        if ($tipo === 'clientes' && $user->idgrupo_persona === 'RFV' && !$this->clientePerteneceARfv($id, $user->idPersona)) {
+            abort(403, 'Este cliente no está asignado a usted.');
         }
 
         try {
@@ -262,9 +287,14 @@ class PersonaAdminController extends Controller
     public function destroy(Request $request, $id)
     {
         $tipo = $request->route()->defaults['tipo'] ?? null;
+        $user = Auth::user();
 
         if (!$this->checkGlobalPermission($tipo, 'delete')) {
             abort(403, 'No tiene permisos para eliminar este registro.');
+        }
+
+        if ($tipo === 'clientes' && $user->idgrupo_persona === 'RFV' && !$this->clientePerteneceARfv($id, $user->idPersona)) {
+            abort(403, 'Este cliente no está asignado a usted.');
         }
 
         try {
