@@ -260,8 +260,11 @@ const procesarFactura = () => {
     onStart:   () => (loading.value = true),
     onFinish:  () => (loading.value = false),
     onSuccess: () => {
+      // El propio redirect de la petición ya vuelve sin 'orden' seleccionada
+      // (ver ConciliarFacturaController::store), no hace falta una segunda
+      // navegación para "limpiarla": eso disparaba una recarga redundante
+      // casi simultánea a la del envío, que el navegador cancelaba.
       resetForm()
-      handleFabricanteChange()
     },
     onError: (errors) => {
       console.error('Error al procesar factura:', errors)

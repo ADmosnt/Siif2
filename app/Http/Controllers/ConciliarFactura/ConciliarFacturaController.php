@@ -261,16 +261,19 @@ class ConciliarFacturaController extends Controller
 
             DB::commit();
 
+            // No se conserva 'orden' en la redirección: la orden recién
+            // facturada ya no debe seguir seleccionada, y mandarla de vuelta
+            // obligaba al frontend a disparar una segunda navegación para
+            // limpiarla (esa segunda navegación era la que el navegador
+            // cancelaba con NS_BINDING_ABORTED).
             if ($nuevaOrdenId) {
                 return redirect()->route('consolidar.index', [
                     'fabricante' => $request->input('fabricante'),
-                    'orden' => $request->input('orden')
                 ])->with('success', "Factura creada. Se genero la orden #{$nuevaOrdenId} con los productos faltantes.");
             }
 
             return redirect()->route('consolidar.index', [
                 'fabricante' => $request->input('fabricante'),
-                'orden' => $request->input('orden')
             ])->with('success', 'La orden ha sido conciliada al completo');
 
         } catch (\Exception $e) {
