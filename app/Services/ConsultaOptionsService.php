@@ -7,7 +7,7 @@ use App\Models\TRankingCliente;
 use App\Models\TTipoActividade;
 use App\Models\TTipoIncidente;
 use App\Models\TEstatusOrdene;
-use App\Models\OperadorFabricante;
+use App\Models\Scopes\OperadorFabricante;
 use App\Services\CompanyContextService;
 
 /**

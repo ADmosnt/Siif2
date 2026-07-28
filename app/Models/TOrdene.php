@@ -72,7 +72,16 @@ class TOrdene extends Model
 
     public function estatus()
     {
-        return $this->belongsTo(TEstatusOrdene::class, 'idestatus', 'idestatus');
+        // TEstatusOrdene tiene su propio global scope OperadorFabricante,
+        // que filtra por el idOperador/idFabricante del USUARIO AUTENTICADO
+        // (no por el de la orden ni por la empresa activa del contexto). En
+        // un eager load (->with('estatus')) ese scope se aplica igual que en
+        // cualquier query normal sobre TEstatusOrdene, así que para SIIF (sin
+        // fabricante fijo) o cuando no coincide con el usuario logueado, la
+        // relación nunca encontraba el estatus real y mostraba "Sin estatus"
+        // siempre, sin importar el estatus real de la orden.
+        return $this->belongsTo(TEstatusOrdene::class, 'idestatus', 'idestatus')
+            ->withoutGlobalScope(OperadorFabricante::class);
     }
 public function productos()
 {
