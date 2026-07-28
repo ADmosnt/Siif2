@@ -50,7 +50,13 @@ class TActividadesRepresentante extends Model
     }
 
    	public function tipoActividad(){
-		return $this->belongsTo(TTipoActividade::class, 'idtipo_actividades' ,'idtipo_actividades' );
+		// TTipoActividade tiene su propio global scope OperadorFabricante,
+		// que filtra por el usuario autenticado (no por la empresa activa
+		// del contexto). Sin quitarlo aca, esta relacion siempre resuelve
+		// null para SIIF cuando esta viendo una empresa distinta a la
+		// suya propia.
+		return $this->belongsTo(TTipoActividade::class, 'idtipo_actividades' ,'idtipo_actividades' )
+			->withoutGlobalScope(OperadorFabricante::class);
    	}
 
     public function incidente(){

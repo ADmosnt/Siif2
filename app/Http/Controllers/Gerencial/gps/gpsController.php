@@ -22,7 +22,14 @@ class gpsController extends Controller
         $desde = Carbon::parse($datos['fechaDesde'])->startOfDay();
         $hasta = Carbon::parse($datos['fechaHasta'])->endOfDay();
 
-        $actividades = TActividadesRepresentante::with([
+        // withoutGlobalScopes(): TActividadesRepresentante tiene el scope
+        // OperadorFabricante, que filtra por el idOperador/idFabricante del
+        // usuario AUTENTICADO en vez de la empresa activa del contexto. Para
+        // SIIF viendo una empresa distinta a la suya, eso dejaba la consulta
+        // sin resultados; ya se filtra explicitamente por idRFV, que
+        // pertenece a una sola empresa de todas formas.
+        $actividades = TActividadesRepresentante::withoutGlobalScopes()
+        ->with([
             'cliente:idPersona,nombre_completo_razon_social,idespecialidad',
             'cliente.especialidad:id,descripcion_especialidad',
             'tipoActividad:idtipo_actividades,descripcion_tipo_actividades',

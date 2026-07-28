@@ -151,11 +151,12 @@ class GerencialController extends Controller
     }
 
     public function exportPdf(Request $request){
-    // La vista necesita supervisor/representante/zona/ruta (ver
-    // pdf.gerencial.blade.php); exportExcel() ya las precargaba con
-    // with(), pero aca faltaba y esas columnas quedaban en "N/A".
+    // applyFilters() ya trae supervisor_nombre/rfv_nombre/zona_nombre/
+    // ruta_descripcion resueltos por LEFT JOIN (ver applyFilters() mas
+    // abajo); with() no sirve aca porque el select() de esa query no
+    // incluye idRFV/idsupervisor/idzona/idruta, que es lo que Eloquent
+    // necesita para resolver esas relaciones.
     $estadisticas = $this->applyFilters($request)
-        ->with(['supervisor', 'representante', 'zona', 'ruta'])
         ->latest('fechaRegistro')
         ->get();
 
@@ -166,16 +167,16 @@ class GerencialController extends Controller
 
     $pdf = Pdf::loadView('pdf.gerencial', compact('estadisticas'))
                 ->setPaper('a4', 'landscape');
-                
+
     return $pdf->download('reporte-gerencial.pdf');
     }
 
     public function exportExcel(Request $request)
     {
+        // Ver comentario equivalente en exportPdf().
         $estadisticas = $this->applyFilters($request)
-    ->with(['supervisor', 'representante', 'zona', 'ruta'])
-    ->latest('fechaRegistro')
-    ->get();
+            ->latest('fechaRegistro')
+            ->get();
         return Excel::download(new GerencialExport($estadisticas), 'reporte-gerencial.xlsx');
     }
 }

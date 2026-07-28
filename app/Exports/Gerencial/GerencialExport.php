@@ -63,11 +63,16 @@ class GerencialExport implements
     public function map($item): array
     {
         return [
-            // El helper optional() evita errores si la relación no existe
-            optional($item->supervisor)->nombre_completo_razon_social ?? 'Sin Supervisor',
-            optional($item->representante)->nombre_completo_razon_social ?? 'Sin RFV',
-            optional($item->zona)->descripcion_zona ?? 'N/A',
-            optional($item->ruta)->Descripcion ?? 'N/A',
+            // applyFilters() (gerencialController) ya resuelve estos nombres
+            // por LEFT JOIN como columnas planas: su select() no incluye
+            // idRFV/idsupervisor/idzona/idruta, asi que las relaciones de
+            // Eloquent ($item->supervisor, etc.) siempre daban null aunque
+            // se pidiera with(). Hay que usar los alias planos, igual que
+            // la tabla en pantalla (ConsultaGerencial.vue).
+            $item->supervisor_nombre ?? 'Sin Supervisor',
+            $item->rfv_nombre ?? 'Sin RFV',
+            $item->zona_nombre ?? 'N/A',
+            $item->ruta_descripcion ?? 'N/A',
             $item->MesRegistro ?? 'N/A',
             
             // Formateo manual de porcentaje

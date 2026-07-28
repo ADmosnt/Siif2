@@ -55,12 +55,20 @@
             </tr>
         </thead>
         <tbody>
+            {{-- applyFilters() (gerencialController) trae estos nombres ya
+                 resueltos por LEFT JOIN como columnas planas (supervisor_nombre,
+                 rfv_nombre, zona_nombre, ruta_descripcion): su select() no
+                 incluye idRFV/idsupervisor/idzona/idruta, asi que las
+                 relaciones de Eloquent ($item->supervisor, etc.) siempre
+                 resuelven null aunque se pida with(). Hay que usar los
+                 alias planos, igual que la tabla en pantalla
+                 (ConsultaGerencial.vue). --}}
             @foreach($estadisticas as $item)
                 <tr class="{{ $loop->even ? 'bg-gray' : '' }}">
-                    <td>{{ $item->supervisor->nombre_completo_razon_social ?? 'N/A' }}</td>
-                    <td>{{ $item->representante->nombre_completo_razon_social ?? 'N/A' }}</td>
-                    <td>{{ $item->zona->descripcion_zona ?? 'N/A' }}</td>
-                    <td>{{ $item->ruta->Descripcion ?? 'N/A' }}</td>
+                    <td>{{ $item->supervisor_nombre ?? 'N/A' }}</td>
+                    <td>{{ $item->rfv_nombre ?? 'N/A' }}</td>
+                    <td>{{ $item->zona_nombre ?? 'N/A' }}</td>
+                    <td>{{ $item->ruta_descripcion ?? 'N/A' }}</td>
                     <td class="text-center">{{ $item->MesRegistro }}</td>
                     <td class="text-right">{{ number_format($item->porce_cobertura, 2) }}%</td>
                     <td class="text-right">{{ number_format($item->productoEsperado, 0) }}</td>
