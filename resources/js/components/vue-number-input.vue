@@ -208,16 +208,17 @@ export default defineComponent({
   >
     <button
       v-if="controls"
-      class="vue-number-input__button vue-number-input__button--minus absolute top-px bottom-px left-px z-10 border-r border-gray-300 rounded-l disabled:opacity-65 focus:outline-none"
+      class="vue-number-input__button vue-number-input__button--minus absolute top-px bottom-px left-px z-10 flex items-center justify-center border-r border-gray-300 rounded-l disabled:opacity-65 focus:outline-none leading-none text-gray-700 dark:text-gray-200"
       :class="[
         size === 'small' ? 'w-8' : size === 'large' ? 'w-12' : 'w-10',
+        size === 'large' ? 'text-xl' : 'text-base',
         'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
       ]"
       type="button"
       tabindex="-1"
       :disabled="disabled || readonly || !decreasable"
       @click.prevent="decrease"
-    />
+    >&minus;</button>
 
 
     <input
@@ -255,53 +256,23 @@ export default defineComponent({
 
     <button
       v-if="controls"
-      class="vue-number-input__button absolute top-px bottom-px right-px z-10 border-l border-gray-300 rounded-r disabled:opacity-65 focus:outline-none"
+      class="vue-number-input__button absolute top-px bottom-px right-px z-10 flex items-center justify-center border-l border-gray-300 rounded-r disabled:opacity-65 focus:outline-none leading-none text-gray-700 dark:text-gray-200"
       :class="[
         size === 'small' ? 'w-8' : size === 'large' ? 'w-12' : 'w-10',
+        size === 'large' ? 'text-xl' : 'text-base',
         'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
       ]"
       type="button"
       tabindex="-1"
       :disabled="disabled || readonly || !increasable"
       @click.prevent="increase"
-    />
+    >+</button>
 
 
   </div>
 </template>
 
 <style>
-
-
-.vue-number-input__button::before {
-  height: 2px;
-  width: 50%;
-}
-
-.vue-number-input__button::after {
-  height: 50%;
-  width: 2px;
-}
-
-.vue-number-input__button--minus::after {
-  visibility: hidden;
-}
-
-.vue-number-input__button::before,
-.vue-number-input__button::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  transition: background-color 0.15s;
-  background-color: #111; /* Claro por defecto */
-}
-
-.dark .vue-number-input__button::before,
-.dark .vue-number-input__button::after {
-  background-color: #fff; /* Blanco en modo oscuro */
-}
 
 /* Quitar flechas en inputs number */
 input[type="number"]::-webkit-outer-spin-button,
