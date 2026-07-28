@@ -71,8 +71,14 @@ class ReporteDataService
             $idRfv = $idRfv ?? $request->input('idRfv');
             $fabricanteId = $this->getEffectiveFabricanteId($idRfv);
 
-            $query = TTipoActividade::where('idestatus', 1);
-            
+            // withoutGlobalScopes(): TTipoActividade tiene el scope
+            // OperadorFabricante, que filtra por el idOperador/idFabricante
+            // del usuario AUTENTICADO en vez de la empresa activa del
+            // contexto. Ya se filtra explicitamente por $fabricanteId
+            // (resuelto arriba), asi que ese scope solo estorba - para SIIF
+            // viendo una empresa que no es la suya, dejaba el select vacio.
+            $query = TTipoActividade::withoutGlobalScopes()->where('idestatus', 1);
+
             if ($fabricanteId) {
                 $query->where('idfabricante', $fabricanteId);
             }
@@ -95,7 +101,8 @@ class ReporteDataService
             $idRfv = $idRfv ?? $request->input('idRfv');
             $fabricanteId = $this->getEffectiveFabricanteId($idRfv);
 
-            $query = TTipoIncidente::where('idestatus', 1);
+            // Ver comentario equivalente en getActividadesData().
+            $query = TTipoIncidente::withoutGlobalScopes()->where('idestatus', 1);
 
             if ($fabricanteId) {
                 $query->where('idfabricante', $fabricanteId);

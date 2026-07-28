@@ -220,7 +220,8 @@ class ConciliarFacturaController extends Controller
                                 'iditem_orden' => $itemOrden,
                                 'item_price' => $p['precio'],
                                 'cantidad_solicitada' => $p['faltantes'],
-                                'nombreproducto' => $productoModel->nombre_producto ?? '',
+                                // t_item_ordenes.nombreproducto es varchar(45)
+                                'nombreproducto' => substr($productoModel->nombre_producto ?? '', 0, 45),
                                 'item_descuento' => 0,
                                 'item_total' => $p['faltantes'] * $p['precio'],
                                 'item_impuesto' => $orden->impuesto,

@@ -153,7 +153,8 @@ class OrdenController extends Controller
                         'idMayorista' => $request->mayoristas[0]['id'],
                         'iditem_orden' => $index + 1,
                         'item_price' => $item['precio'],
-                        'nombreproducto' => $producto?->nombre_producto ?? "Producto #{$item['id']}",
+                        // t_item_ordenes.nombreproducto es varchar(45)
+                        'nombreproducto' => substr($producto?->nombre_producto ?? "Producto #{$item['id']}", 0, 45),
                         'cantidad_solicitada' => $item['cantidad'],
                         'idunidades' => $item['unidades'] ?? 1,
                         'item_descuento' => $item['descuento'] ?? $request->mayoristas[0]['descuento'] ?? 0,

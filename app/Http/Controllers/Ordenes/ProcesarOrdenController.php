@@ -206,6 +206,10 @@ class ProcesarOrdenController extends Controller
     private function obtenerNombreProducto(string $idProducto): string
     {
         $producto = \App\Models\TProducto::withoutGlobalScopes()->find($idProducto);
-        return $producto ? $producto->nombre_producto : "Producto #{$idProducto}";
+        $nombre = $producto ? $producto->nombre_producto : "Producto #{$idProducto}";
+
+        // t_item_ordenes.nombreproducto es varchar(45); un nombre mas largo
+        // tira "Data too long for column" y aborta el insert entero.
+        return substr($nombre, 0, 45);
     }
 }
