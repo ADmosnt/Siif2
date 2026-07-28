@@ -178,7 +178,10 @@ class TmpPlanificadorController extends Controller
 
     public function descargarPlantilla()
     {
-        return Excel::download(new PlantillaVisitasExport(), 'plantilla_visitas.xlsx');
+        return Excel::download(
+            new PlantillaVisitasExport($this->representanteClienteService),
+            'plantilla_visitas.xlsx'
+        );
     }
 
     public function cargaMasiva(Request $request): JsonResponse
@@ -194,22 +197,40 @@ class TmpPlanificadorController extends Controller
             $importados = $import->getImportados();
             $errores = $import->getErrors();
             $failures = $import->getFailures();
+            $totalFallidas = count($errores) + count($failures);
 
-            $mensaje = "{$importados} visita(s) creada(s) correctamente.";
-            if (count($errores) > 0 || count($failures) > 0) {
-                $mensaje .= ' Algunas filas tuvieron errores.';
+            if ($totalFallidas === 0) {
+                $mensaje = "{$importados} visita(s) creada(s) correctamente.";
+                $estado = 'SUCCESS';
+            } elseif ($importados > 0) {
+                $mensaje = "{$importados} visita(s) creada(s) correctamente. {$totalFallidas} fila(s) con errores (no se cargaron).";
+                $estado = 'PARTIAL_SUCCESS';
+            } else {
+                $mensaje = "No se pudo crear ninguna visita. {$totalFallidas} fila(s) con errores.";
+                $estado = 'CRITICAL_ERROR';
             }
 
+            // Formato consumido por useNotificationHandler (mismo sistema de
+            // alertas que usa Monitor de Archivos): las filas validas siempre
+            // se cargan (VisitaMasivaImport ya procesa fila por fila y solo
+            // salta las invalidas), y las invalidas quedan agrupadas aca con
+            // el numero de fila y el motivo, en vez de perderse en un
+            // alert() de texto plano.
             return response()->json([
                 'message' => $mensaje,
                 'importados' => $importados,
-                'errores' => $errores,
-                'failures' => collect($failures)->map(fn($f) => [
-                    'row' => $f->row(),
-                                                      'attribute' => $f->attribute(),
-                                                      'errors' => $f->errors(),
+                'summary' => [
+                    'total_filas_fallidas' => $totalFallidas,
+                    'mensaje_general' => $mensaje,
+                    'estado_general' => $estado,
+                ],
+                'processing_errors' => $errores,
+                'validation_failures' => collect($failures)->map(fn($f) => [
+                    'fila' => $f->row(),
+                    'columna_excel' => $f->attribute(),
+                    'errores' => $f->errors(),
                 ])->toArray(),
-            ], $importados > 0 ? 200 : 422);
+            ], $importados > 0 || $totalFallidas === 0 ? 200 : 422);
         } catch (\Exception $e) {
             Log::error('Error en carga masiva de visitas:', ['message' => $e->getMessage()]);
             return response()->json(['message' => 'Error al procesar el archivo: ' . $e->getMessage()], 500);

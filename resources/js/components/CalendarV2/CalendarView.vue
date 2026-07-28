@@ -8,6 +8,7 @@ import GenericCombobox from '@/components/GenericCombobox.vue'
 import Button from "../ui/button/Button.vue"
 import axios from 'axios'
 import GenericGlobalAlert from '@/components/GenericGlobalAlert.vue'
+import { useNotificationHandler } from '@/composables/useNotificationHandler'
 
 // =============================================================================
 // INTERFACES Y TIPOS
@@ -76,6 +77,18 @@ const rfvsLoaded = ref(false)
 const isUploading = ref(false)
 const rutaPlantilla = '/tmp-planificaciones/plantilla-descarga'
 
+const {
+  showErrorDialog,
+  errorDialogMessage,
+  errorDialogDetails,
+  errorSummary,
+  showToast,
+  toastMessage,
+  toastType,
+  toastDetails,
+  showNotification,
+} = useNotificationHandler()
+
 async function handleCargaMasiva(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files?.length) return
@@ -92,17 +105,13 @@ async function handleCargaMasiva(event: Event) {
     })
 
     const data = response.data
-    let mensaje = data.message || 'Carga completada.'
-    if (data.errores?.length > 0) {
-      mensaje += '\n\nErrores:\n' + data.errores.slice(0, 5).join('\n')
-      if (data.errores.length > 5) mensaje += `\n...y ${data.errores.length - 5} errores mas.`
-    }
-    alert(mensaje)
+    const tipo = data.summary?.estado_general === 'PARTIAL_SUCCESS' ? 'warning' : 'success'
+    showNotification(data.message || 'Carga completada.', tipo, data)
 
     await visitasStore.cargarVisitasDelMes(currentDate.value)
   } catch (err: any) {
-    const msg = err.response?.data?.message || 'Error al procesar el archivo.'
-    alert(msg)
+    const data = err.response?.data
+    showNotification(data?.message || 'Error al procesar el archivo.', 'error', data)
   } finally {
     isUploading.value = false
     input.value = ''
@@ -408,7 +417,59 @@ defineExpose({
 <template>
   <div class="relative">
     <GenericGlobalAlert />
-    
+
+    <!-- Diálogo de errores de la carga masiva -->
+    <div v-if="showErrorDialog" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold mb-4 text-red-600">Errores en la Carga Masiva</h3>
+        <p class="mb-4 text-gray-700">{{ errorDialogMessage }}</p>
+
+        <div v-if="errorSummary" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p class="font-semibold text-red-700 mb-2">Resumen de la Importación:</p>
+          <p class="text-sm text-red-600 mb-2">
+            {{ errorSummary.mensaje_general }}
+            <span v-if="errorSummary.total_filas_fallidas > 0"> ({{ errorSummary.total_filas_fallidas }} fila(s) afectada(s))</span>
+          </p>
+        </div>
+
+        <div v-if="errorDialogDetails.length > 0" class="mt-4">
+          <p class="font-semibold text-gray-800">Filas con errores:</p>
+          <ul class="list-disc list-inside text-sm text-gray-600 max-h-40 overflow-y-auto border border-gray-200 p-3 rounded-md mt-2">
+            <li v-for="(detail, index) in errorDialogDetails" :key="index">
+              <template v-if="typeof detail === 'string'">
+                {{ detail }}
+              </template>
+              <template v-else-if="detail.fila">
+                <span class="font-medium">Fila {{ detail.fila }}</span>:
+                <template v-if="detail.columna_excel"> Columna "{{ detail.columna_excel }}" -</template>
+                <template v-if="detail.errores"> {{ detail.errores.join(', ') }}</template>
+              </template>
+              <template v-else>
+                {{ JSON.stringify(detail) }}
+              </template>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-6 text-right">
+          <button
+            @click="showErrorDialog = false"
+            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showToast" :class="[
+      'fixed bottom-4 right-4 p-4 rounded-md shadow-lg text-white z-50 max-w-sm',
+      toastType === 'success' ? 'bg-green-500' : (toastType === 'warning' ? 'bg-orange-500' : 'bg-red-500')
+    ]">
+      <p class="font-bold">{{ toastMessage }}</p>
+      <p v-if="toastDetails" class="text-sm">{{ toastDetails }}</p>
+    </div>
+
     <div
       :class="[
         'vc-calendar grow w-full flex flex-col',
