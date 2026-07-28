@@ -35,7 +35,15 @@ const ENDPOINT_MAP: Record<SyncOperationType, string> = {
 
 export async function downloadMasterData(): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await axios.get<MasterDataResponse>('/offline/master-data')
+    // _suppressAlert: se llama en cada login y cada vez que vuelve la
+    // conexion, para CUALQUIER rol (ver offlineStore.ts / Login.vue). Para
+    // no-RFV el backend devuelve 403 a proposito (el modo offline es solo
+    // para RFV) - sin esto, el interceptor global de axios mostraba ese
+    // 403 como un alert molesto en pantalla para SIIF/GRT/SUP en cada
+    // reconexion, igual que ya se evitaba en downloadOfflineToken().
+    const response = await axios.get<MasterDataResponse>('/offline/master-data', {
+      _suppressAlert: true,
+    } as any)
     await storeMasterData(response.data)
     return { success: true }
   } catch (error: any) {

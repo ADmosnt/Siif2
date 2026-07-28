@@ -161,6 +161,12 @@ export const useOfflineStore = defineStore('offline', () => {
   function destroy() {
     window.removeEventListener('online', handleOnline)
     window.removeEventListener('offline', handleOffline)
+    // Sin esto, si destroy() llega a ejecutarse una vez (SyncStatusBar
+    // deberia permanecer montado toda la sesion, pero por las dudas), init()
+    // nunca vuelve a registrar los listeners (el guard "if (initialized)
+    // return" lo bloquearia para siempre) y el sidebar/logout quedan
+    // congelados con el ultimo estado online/offline conocido.
+    initialized = false
   }
 
   return {

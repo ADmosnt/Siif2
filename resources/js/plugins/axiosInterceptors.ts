@@ -59,8 +59,16 @@ export function setupAxiosInterceptors() {
             }
         }
       } else if (error.request) {
-        // Error de red (sin respuesta)
-        alertStore.showError('Error de conexión. Verifique su conexión a internet')
+        // Error de red (sin respuesta). Si el navegador ya sabe que esta
+        // sin internet, no repetirlo: el usuario ya lo ve reflejado en el
+        // sidebar (opciones deshabilitadas) y la barra de sincronizacion,
+        // y este mismo aviso saltaba de nuevo cada vez que se entraba a
+        // un modulo distinto mientras seguia offline (cada request fallida
+        // disparaba un nuevo toast). Se deja para cuando SI hay una falla
+        // de red puntual con el navegador creyendose online.
+        if (navigator.onLine) {
+          alertStore.showError('Error de conexión. Verifique su conexión a internet')
+        }
       } else {
         // Error en la configuración de la petición
         alertStore.showError('Error al configurar la petición')

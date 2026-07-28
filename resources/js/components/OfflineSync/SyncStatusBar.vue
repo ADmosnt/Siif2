@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { useOfflineStore } from '@/stores/offlineStore'
 
 const store = useOfflineStore()
 
+// Este componente se monta una sola vez para toda la sesion (ver app.ts,
+// se renderiza junto al root de Inertia, no dentro de una pagina), asi que
+// nunca deberia desmontarse en uso normal. No se llama a store.destroy()
+// en onUnmounted: si este componente llegara a desmontarse igual (HMR,
+// etc.) eso mataria el tracking de online/offline para el resto de la
+// sesion, dejando el sidebar y el boton de logout sin actualizarse.
 onMounted(() => store.init())
-onUnmounted(() => store.destroy())
 </script>
 
 <template>
