@@ -1,13 +1,13 @@
 ================================================================================
      GUIA COMPLETA: COMO CORRER SIIF2 CON DOCKER EN WINDOWS 11
-     (Paso a paso - MariaDB + DBeaver + Laravel)
+     (Paso a paso - MySQL + DBeaver + Laravel)
 ================================================================================
 
 Estimado usuario, esta guia le explicara paso a paso como:
 
   1. Instalar Docker en Windows 11
   2. Descargar y correr el proyecto SIIF2
-  3. Migrar/cargar la base de datos en MariaDB
+  3. Migrar/cargar la base de datos en MySQL
   4. Instalar DBeaver y conectarse a la base de datos
   5. Ejecutar comandos de Laravel (php artisan migrate, etc.)
 
@@ -104,7 +104,7 @@ PASO 3.1 - Crear el archivo .env
 ----------------------------------------------------------------------
   a) Dentro de la carpeta Siif2 en PowerShell, ejecute:
 
-         copy .env.example_with_docker_mariadb .env
+         copy .env.example_with_docker_mysql .env
 
      Esto crea una copia del archivo de ejemplo con el nombre correcto.
 
@@ -138,7 +138,7 @@ Docker va a crear 4 "contenedores" (maquinas virtuales pequenas):
   - "app"    = El servidor PHP/Laravel (el cerebro del sistema)
   - "node"   = El compilador de Vue/JavaScript (la cara del sistema)
   - "nginx"  = El servidor web (el que recibe las visitas)
-  - "db"     = La base de datos MariaDB (donde se guardan los datos)
+  - "db"     = La base de datos MySQL (donde se guardan los datos)
 
 PASO 4.1 - Construir y levantar los contenedores
 ----------------------------------------------------------------------
@@ -156,7 +156,7 @@ PASO 4.1 - Construir y levantar los contenedores
                             la ventana de PowerShell)
 
   c) LA PRIMERA VEZ tardara entre 5 y 15 minutos porque tiene que:
-     - Descargar PHP, Node.js, Nginx y MariaDB de internet
+     - Descargar PHP, Node.js, Nginx y MySQL de internet
      - Instalar todas las librerias del proyecto
      - Crear la base de datos
 
@@ -234,7 +234,7 @@ iniciales cuando Docker crea la base de datos por primera vez.
 Este archivo esta en:
     Siif2/docker-entrypoint-initdb.d/01_dump_patched.sql
 
-Docker/MariaDB lo ejecuta AUTOMATICAMENTE la primera vez que se crea
+Docker/MySQL lo ejecuta AUTOMATICAMENTE la primera vez que se crea
 el contenedor de base de datos. Usted NO necesita hacer nada extra.
 
 PASO 5.1 - Ejecutar migraciones de Laravel (IMPORTANTE)
@@ -295,7 +295,7 @@ PASO 5.2 - Otros comandos utiles de Laravel con Docker
 
 
 ================================================================================
-PARTE 6: INSTALAR DBEAVER Y CONECTARSE A MARIADB
+PARTE 6: INSTALAR DBEAVER Y CONECTARSE A MYSQL
 ================================================================================
 
 DBeaver es un programa gratuito para ver y manejar bases de datos.
@@ -321,7 +321,7 @@ PASO 6.2 - Instalar DBeaver
      - Al final, haga clic en "Instalar"
   d) Cuando termine, haga clic en "Finalizar"
 
-PASO 6.3 - Crear la conexion a MariaDB
+PASO 6.3 - Crear la conexion a MySQL
 ----------------------------------------------------------------------
   a) Abra DBeaver (busquelo en el menu Inicio)
 
@@ -329,8 +329,8 @@ PASO 6.3 - Crear la conexion a MariaDB
      esquina superior izquierda (tooltip: "Nueva conexion")
      O bien vaya al menu: Base de datos > Nueva conexion
 
-  c) En la ventana que aparece, busque y seleccione "MariaDB"
-     (tiene un icono de un delfin azul/marron)
+  c) En la ventana que aparece, busque y seleccione "MySQL"
+     (tiene un icono de un delfin azul)
      Haga clic en "Siguiente"
 
   d) En la pantalla de configuracion, llene estos datos EXACTAMENTE:
@@ -353,7 +353,7 @@ PASO 6.3 - Crear la conexion a MariaDB
      izquierda de la ventana)
 
      - Si es la primera vez, DBeaver le pedira descargar el "driver"
-       de MariaDB. Haga clic en "Download" o "Descargar". Esto es
+       de MySQL. Haga clic en "Download" o "Descargar". Esto es
        normal y solo pasa una vez.
 
      - Si todo esta bien, vera un mensaje verde:
@@ -403,11 +403,11 @@ PASO 6.4 - Explorar la base de datos
 
 
 ================================================================================
-PARTE 7: MIGRAR DATOS DESDE MYSQL EXISTENTE A MARIADB (DOCKER)
+PARTE 7: MIGRAR DATOS DESDE UN MYSQL EXISTENTE AL MYSQL DE DOCKER
 ================================================================================
 
 Si ya tiene una base de datos MySQL con datos que quiere pasar al
-nuevo sistema con Docker/MariaDB, siga estos pasos:
+nuevo sistema con Docker, siga estos pasos:
 
 PASO 7.1 - Exportar los datos de MySQL
 ----------------------------------------------------------------------
@@ -428,17 +428,17 @@ PASO 7.1 - Exportar los datos de MySQL
      Le pedira la contrasena. Escribala y presione Enter.
      Se creara el archivo "backup.sql"
 
-PASO 7.2 - Importar los datos en MariaDB (Docker)
+PASO 7.2 - Importar los datos en MySQL (Docker)
 ----------------------------------------------------------------------
   a) Copie el archivo .sql a la carpeta del proyecto Siif2
 
   b) En PowerShell, dentro de la carpeta Siif2, ejecute:
 
-         docker compose exec -T db mariadb -ularavel_user -p0690164 appserviciosinte_siif < backup.sql
+         docker compose exec -T db mysql -ularavel_user -p0690164 appserviciosinte_siif < backup.sql
 
      Explicacion:
        docker compose exec -T db  = ejecuta dentro del contenedor de BD
-       mariadb                    = el programa cliente de MariaDB
+       mysql                      = el programa cliente de MySQL
        -ularavel_user             = el usuario
        -p0690164                  = la contrasena
        appserviciosinte_siif      = nombre de la base de datos
@@ -448,11 +448,6 @@ PASO 7.2 - Importar los datos en MariaDB (Docker)
      de datos es grande.
 
   d) Verifique en DBeaver que los datos se importaron correctamente.
-
-NOTA IMPORTANTE SOBRE COMPATIBILIDAD:
-  MariaDB es 99.9% compatible con MySQL. Los archivos .sql exportados
-  desde MySQL funcionan directamente en MariaDB sin modificaciones.
-  Son como "primos hermanos": hablan casi el mismo idioma.
 
 
 ================================================================================
@@ -572,7 +567,7 @@ PARTE 10: RESUMEN DE PUERTOS
   +---------------------+--------+------------------------------------------+
   | Pagina web (SIIF2)  | 8080   | Abrir en el navegador: localhost:8080    |
   | Vite (desarrollo)   | 5173   | Compilador de Vue (automatico)           |
-  | MariaDB (base datos)| 3309   | Conectar desde DBeaver: localhost:3309   |
+  | MySQL (base datos)  | 3309   | Conectar desde DBeaver: localhost:3309   |
   +---------------------+--------+------------------------------------------+
 
   Recuerde: estos puertos solo funcionan en SU computadora.

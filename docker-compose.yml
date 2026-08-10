@@ -81,19 +81,18 @@ services:
       - laravel_network
   # Servicio de Base de Datos
   db:
-    image: mariadb:10.11.8
+    image: mysql:8.0.42
     container_name: laravel-db
     restart: unless-stopped
     ports:
       - "3309:3306"
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MARIADB_DATABASE: ${DB_DATABASE}
-      MARIADB_USER: ${DB_USERNAME}
-      MARIADB_PASSWORD: ${DB_PASSWORD}
-      MARIADB_INITDB_SKIP_TZINFO: 1
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro,Z
     networks:
       - laravel_network
@@ -101,8 +100,8 @@ services:
       test:
         - CMD-SHELL
         - >
-          mariadb -h127.0.0.1 -u"$$MARIADB_USER" -p"$$MARIADB_PASSWORD"
-          -e "SELECT 1" "$$MARIADB_DATABASE" >/dev/null 2>&1
+          mysql -h127.0.0.1 -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD"
+          -e "SELECT 1" "$$MYSQL_DATABASE" >/dev/null 2>&1
       interval: 10s
       timeout: 5s
       retries: 10
@@ -114,7 +113,7 @@ volumes:
     driver: local
   vendor:
     driver: local
-  mariadb_data: 
+  mysql_data:
     driver: local
 
 networks:
