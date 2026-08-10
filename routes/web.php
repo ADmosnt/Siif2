@@ -33,7 +33,18 @@ Route::get('/get-csrf-token', function() {
     return response()->json(['csrf_token' => csrf_token()]);
 });
 
-Route::get('/', fn() => Inertia::render('auth/Login'))->name('login');
+// Sin ->name('login'): esa ruta ya la tiene routes/auth.php (GET /login,
+// con su propio controlador y middleware "guest"), que se registra despues
+// (mas abajo, via require) porque web.php es lo que carga bootstrap/app.php
+// primero. Laravel resuelve route('login')/Ziggy con la PRIMERA ruta
+// registrada que reclama ese nombre, asi que con el ->name('login') de
+// aqui, el formulario de Login.vue (form.post(route('login'), ...)) y los
+// enlaces "volver al login" acababan apuntando a "/" en vez de "/login" -
+// "/" no tiene una ruta POST, asi que el envio del formulario fallaba.
+// Ademas, con dos rutas reclamando el mismo nombre, "php artisan
+// route:cache" (que corre "optimize" en produccion) fallaba con "Unable to
+// prepare route [login] for serialization".
+Route::get('/', fn() => Inertia::render('auth/Login'));
 
 // ================================
 // 2. RUTAS PROTEGIDAS (AUTH)
