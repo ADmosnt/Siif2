@@ -21,6 +21,11 @@ services:
         condition: service_healthy
 
   nginx:
+    # En local se publica en todas las interfaces: asi se puede abrir desde
+    # http://localhost:8080 y tambien desde otro dispositivo de la misma red
+    # (util para probar en el telefono).
+    ports:
+      - "8080:80"
     depends_on:
       - app
       - node

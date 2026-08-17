@@ -14,6 +14,19 @@
 #       --profile build run --rm assets
 
 services:
+  nginx:
+    # Solo 127.0.0.1: el contenedor NO se publica a internet. La unica via de
+    # entrada es el Apache de cPanel, que tiene el certificado y hace de
+    # reverse proxy hacia aqui (ver GUIA_INSTALACION_DOCKER.txt, PARTE 14).
+    #
+    # Esto es lo que hace que el HTTPS sea real y no opcional: si el puerto
+    # siguiera publicado en todas las interfaces, cualquiera podria entrar por
+    # http://IP:8080 y saltarse el certificado. Y sobre HTTP el navegador
+    # desactiva el service worker (modo offline), las notificaciones push y el
+    # GPS, porque exigen "contexto seguro".
+    ports:
+      - "127.0.0.1:8080:80"
+
   app:
     # No ejecutar migraciones automaticamente al arrancar (ver
     # .docker/php/init.sh). En produccion la base de datos puede estar

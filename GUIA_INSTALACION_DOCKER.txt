@@ -1016,6 +1016,296 @@ PASO 13.4 - Volver de la base de produccion a la base local
 
 
 ================================================================================
+PARTE 14: CERTIFICADO SSL (HTTPS) EN PRODUCCION - OBLIGATORIO
+================================================================================
+
+Esto NO es opcional ni cosmetico. Sobre HTTP plano el navegador DESACTIVA
+tres funciones centrales de esta aplicacion, porque exigen lo que se llama
+"contexto seguro" (HTTPS, o localhost):
+
+  1. SERVICE WORKER = MODO OFFLINE. Sobre HTTP, navigator.serviceWorker no
+     existe, el registro de resources/js/app.ts se saltea completo y no se
+     instala ningun service worker. Sintoma tipico: dentro de Toma de Pedidos
+     o Nuevo Reporte el modo offline parece funcionar (porque la app ya esta
+     en memoria y IndexedDB si funciona sobre HTTP), pero al cambiar de una
+     pantalla a la otra, o al entrar de nuevo, no carga nada.
+
+  2. NOTIFICACIONES PUSH. Notification.requestPermission() y
+     pushManager.subscribe() son de contexto seguro. Sobre HTTP el aviso de
+     permiso nunca aparece, nadie se suscribe, y el envio siempre reporta
+     "Push enviado a 0".
+
+  3. GPS / GEOLOCALIZACION. navigator.geolocation esta bloqueado sobre HTTP.
+     Ojo con el detalle: la llamada falla con "permiso denegado" AUNQUE el
+     usuario haya aceptado el permiso.
+
+  Ademas, sin HTTPS no se puede instalar la aplicacion en el telefono
+  ("Agregar a pantalla de inicio"), que es el caso de uso de los RFV.
+
+  No hay forma de arreglar esto por codigo: es una regla del navegador.
+
+
+ARQUITECTURA
+----------------------------------------------------------------------
+  Lo que NO sirve (lo que el navegador marca como "Inseguro"):
+
+      Usuario --> http://<IP>:8080 --> nginx de Docker --> app
+
+  Lo correcto:
+
+      Usuario --> https://appweb.gestoriasif.com   (puerto 443, con
+                    |                               certificado)
+                    v
+              Apache de cPanel  (aqui vive el certificado)
+                    |
+                    v
+              127.0.0.1:8080 --> nginx de Docker --> app
+
+  El certificado va en el Apache de cPanel, no en el nginx de Docker. Motivo:
+  Apache ya esta ocupando los puertos 80 y 443 del servidor para los otros
+  dominios, asi que el contenedor no puede tomar el 443. Apache recibe la
+  peticion cifrada y la reenvia sin cifrar por dentro del propio servidor
+  (127.0.0.1), lo cual es seguro porque nunca sale a la red.
+
+
+PASO 14.0 - URGENTE: cerrar la exposicion del codigo fuente
+----------------------------------------------------------------------
+  Si el subdominio muestra un listado "Index of /" con el proyecto, todo eso
+  es descargable por cualquiera en internet: el codigo, el archivo .env con
+  las credenciales de la base de datos, y el dump SQL con los datos.
+
+  a) Borrar cualquier respaldo comprimido que este en la carpeta publica:
+
+         rm -f /home/gestoriasif/public_html/appweb.gestoriasif.com/siif-2.zip
+
+  b) Comprobar si el .env quedo expuesto. Abra en el navegador:
+
+         http://appweb.gestoriasif.com/siif-2/.env
+
+     Si el archivo se descarga o se muestra, esas credenciales se deben
+     considerar comprometidas: cambie la contrasena de la base de datos en
+     cPanel y actualicela en el .env.
+
+  c) La configuracion de los pasos siguientes cierra esta exposicion, porque
+     Apache va a dejar de servir esa carpeta y va a reenviar todo al
+     contenedor.
+
+  RECOMENDACION a futuro: el proyecto no deberia vivir dentro de public_html.
+  Lo ideal es moverlo a algo como /home/gestoriasif/apps/siif-2, fuera de
+  cualquier carpeta publica. Con el proxy configurado no hace falta que este
+  en public_html para nada.
+
+
+PASO 14.1 - Quitar la redireccion actual de cPanel
+----------------------------------------------------------------------
+  En la lista de Dominios de cPanel, appweb.gestoriasif.com aparece con
+  "Redirige a: http://207.246.119.214:8080/". Esa redireccion es justamente
+  la que manda al usuario a HTTP sin certificado, y hay que eliminarla:
+
+    - cPanel > Dominios (o "Redirecciones", segun la version)
+    - Buscar la redireccion de appweb.gestoriasif.com
+    - Eliminarla
+
+  Sin esto, el navegador va a seguir terminando en http://IP:8080 por mas
+  certificado que instale.
+
+
+PASO 14.2 - Emitir el certificado con AutoSSL (gratis)
+----------------------------------------------------------------------
+  Hagalo ANTES de configurar el proxy: la validacion del certificado necesita
+  poder escribir y leer archivos en la carpeta publica del subdominio, y una
+  vez que el proxy este activo esa carpeta ya no se sirve.
+
+    a) cPanel > SSL/TLS Status  (o "Estado de SSL/TLS")
+    b) Marcar appweb.gestoriasif.com
+    c) Clic en "Run AutoSSL"  (Ejecutar AutoSSL)
+    d) Esperar unos minutos y recargar. Debe quedar con un candado verde.
+
+  AutoSSL usa Let's Encrypt: es gratuito y se renueva automaticamente.
+
+  Si falla, casi siempre es DNS: el subdominio debe apuntar a la IP de esta
+  VPS. Verifiquelo con:
+
+         dig +short appweb.gestoriasif.com
+
+  Debe devolver 207.246.119.214. Si devuelve otra cosa (o nada), primero hay
+  que corregir el DNS y despues reintentar AutoSSL.
+
+
+PASO 14.3 - Verificar que Apache pueda hacer de proxy
+----------------------------------------------------------------------
+  Como root en la VPS:
+
+         httpd -M 2>/dev/null | grep -E "proxy_module|proxy_http_module|headers_module"
+
+  Deben aparecer los tres:
+         proxy_module (shared)
+         proxy_http_module (shared)
+         headers_module (shared)
+
+  Si falta alguno, se activa desde:
+    cPanel WHM > EasyApache 4 > Customize > Apache Modules
+  y ahi se marcan mod_proxy, mod_proxy_http y mod_headers.
+
+
+PASO 14.4 - Configurar el reverse proxy en Apache
+----------------------------------------------------------------------
+  IMPORTANTE: en un servidor con cPanel NO se edita httpd.conf directamente,
+  porque cPanel lo regenera y se pierden los cambios. Hay que usar los
+  archivos "include" de usuario, que cPanel respeta.
+
+  a) Crear la carpeta del include para el vhost SSL (el de HTTPS):
+
+         mkdir -p /etc/apache2/conf.d/userdata/ssl/2_4/gestoriasif/appweb.gestoriasif.com
+
+  b) Crear el archivo de configuracion:
+
+         nano /etc/apache2/conf.d/userdata/ssl/2_4/gestoriasif/appweb.gestoriasif.com/proxy.conf
+
+  c) Pegar exactamente esto:
+
+         ProxyPreserveHost On
+         ProxyTimeout 300
+
+         # Que Laravel sepa que el usuario entro por HTTPS. Sin esta linea
+         # Laravel genera URLs http:// dentro de una pagina https:// y el
+         # navegador las bloquea (contenido mixto) -> pagina en blanco.
+         RequestHeader set X-Forwarded-Proto "https"
+
+         # No reenviar la validacion de Let's Encrypt al contenedor, para que
+         # la renovacion automatica del certificado siga funcionando.
+         ProxyPass /.well-known !
+
+         ProxyPass / http://127.0.0.1:8080/
+         ProxyPassReverse / http://127.0.0.1:8080/
+
+     Guardar con Ctrl+O, Enter, y salir con Ctrl+X.
+
+  d) Aplicar los cambios (regenera los vhosts y reinicia Apache):
+
+         /scripts/ensure_vhost_includes --user=gestoriasif
+         /scripts/restartsrv_httpd
+
+  NOTA: "gestoriasif" es el usuario de cPanel (se ve en la ruta /home/...).
+  Si su usuario fuera otro, ajuste la ruta.
+
+
+PASO 14.5 - Forzar HTTPS
+----------------------------------------------------------------------
+  Para que quien entre por http:// sea enviado automaticamente a https://:
+
+    - cPanel > Dominios
+    - En appweb.gestoriasif.com, activar el interruptor
+      "Force HTTPS Redirect"
+
+  (cPanel excluye /.well-known de esta redireccion, asi que no interfiere con
+   la renovacion del certificado.)
+
+
+PASO 14.6 - Cerrar el puerto 8080 al exterior
+----------------------------------------------------------------------
+  Esto es lo que hace que el HTTPS sea obligatorio y no una opcion: si el
+  puerto 8080 sigue abierto a internet, cualquiera puede entrar por
+  http://IP:8080, saltarse el certificado, y volver a quedarse sin modo
+  offline, sin push y sin GPS.
+
+  El proyecto ya lo resuelve: docker-compose.prod.yml publica el puerto solo
+  en 127.0.0.1, de modo que unicamente el Apache del propio servidor puede
+  alcanzarlo. Solo hay que levantar en modo produccion (PARTE 12):
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+  Verificar que quedo escuchando solo en local:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+
+  En la columna de puertos debe decir 127.0.0.1:8080->80/tcp
+  (y NO 0.0.0.0:8080->80/tcp).
+
+  Comprobacion adicional, desde su PC (no desde la VPS): abrir
+  http://207.246.119.214:8080 ya NO debe cargar nada. Eso es lo correcto.
+
+  Si tiene firewall activo (csf o firewalld), aproveche para cerrar el 8080:
+
+         # con csf: quitar 8080 de TCP_IN en /etc/csf/csf.conf y luego
+         csf -r
+
+
+PASO 14.7 - Ajustar Laravel para el HTTPS
+----------------------------------------------------------------------
+  a) En el .env del servidor, la URL debe ser la publica con https y SIN
+     puerto:
+
+         APP_URL=https://appweb.gestoriasif.com
+
+  b) Limpiar la cache de configuracion para que tome el cambio:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           exec app php artisan config:clear
+
+  c) Recompilar los assets, porque el service worker precachea URLs y hay que
+     regenerarlo ya sobre el dominio definitivo:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           --profile build run --rm assets
+
+  NOTA: el codigo ya incluye trustProxies (ver bootstrap/app.php), que es lo
+  que hace que Laravel respete el X-Forwarded-Proto que envia Apache. No hay
+  que configurar nada mas de ese lado.
+
+
+PASO 14.8 - Verificar que todo quedo bien
+----------------------------------------------------------------------
+  a) Abrir https://appweb.gestoriasif.com  (sin puerto)
+     - Debe aparecer el candado, y NO el aviso "Inseguro"
+     - Debe cargar el login (no un "Index of /")
+
+  b) Verificar que el service worker ahora SI existe. En el navegador,
+     F12 > Console, escribir:
+
+         navigator.serviceWorker
+
+     - Sobre HTTP devolvia "undefined" (ese era el problema)
+     - Sobre HTTPS debe devolver un objeto ServiceWorkerContainer
+
+  c) F12 > Application (o Almacenamiento) > Service Workers: debe aparecer
+     sw.js con estado "activated".
+
+  d) Probar el modo offline de verdad:
+     - Entrar a Toma de Pedidos con internet
+     - F12 > Network > marcar "Offline"
+     - Cambiar a Nuevo Reporte: AHORA si debe cargar
+     - Guardar un pedido: debe quedar en la cola
+     - Volver a poner internet: debe sincronizar solo
+
+  e) Probar el aviso de notificaciones push: ahora debe aparecer el pedido de
+     permiso (sobre HTTP nunca aparecia).
+
+  f) Probar el GPS en Nuevo Reporte / Toma de Pedidos.
+
+
+ALTERNATIVA MAS RAPIDA (si AutoSSL da problemas): Cloudflare
+----------------------------------------------------------------------
+  Si el DNS del dominio se puede mover a Cloudflare (plan gratuito), se
+  obtiene HTTPS sin tocar Apache:
+
+    1. Agregar gestoriasif.com a Cloudflare y cambiar los nameservers en el
+       registrador del dominio.
+    2. Crear un registro A: appweb -> 207.246.119.214, con la nube NARANJA
+       (proxy activado).
+    3. SSL/TLS > Overview > modo "Flexible" (o "Full" si luego instala el
+       certificado en el servidor).
+
+  Con eso el usuario entra por https:// y el service worker se habilita.
+  Igual hay que hacer los pasos 14.0 (seguridad), 14.1 (quitar la
+  redireccion) y 14.7 (APP_URL).
+
+  Advertencia: en modo "Flexible" el tramo entre Cloudflare y su servidor
+  viaja sin cifrar por internet. Es aceptable como solucion temporal, pero la
+  opcion con AutoSSL + proxy de Apache es la correcta a largo plazo.
+
+
+================================================================================
 FIN DE LA GUIA
 ================================================================================
 
