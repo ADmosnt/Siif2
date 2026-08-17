@@ -52,8 +52,18 @@ else
   echo "⚠️  Variables de base de datos incompletas; omitiendo verificación."
 fi
 
-# ---- Migraciones sólo si la DB está lista
-if [ "$DB_READY" = true ]; then
+# ---- Migraciones sólo si la DB está lista Y están habilitadas
+# RUN_MIGRATIONS=false (lo que pone docker-compose.prod.yml) evita que cada
+# arranque del contenedor le cambie el esquema a la base de datos. En
+# produccion esa base puede estar compartida con otra instalacion en vivo, y
+# migrar sin supervision puede romperla. Ahi se corre a mano:
+#   php artisan migrate:status   (ver que falta)
+#   php artisan migrate --force  (aplicarlas)
+RUN_MIGRATIONS="${RUN_MIGRATIONS:-true}"
+
+if [ "$RUN_MIGRATIONS" != "true" ]; then
+  echo "⏭️  RUN_MIGRATIONS=$RUN_MIGRATIONS, omitiendo migraciones automáticas."
+elif [ "$DB_READY" = true ]; then
   echo "Ejecutando migraciones de base de datos..."
   php artisan migrate --force || true
 else

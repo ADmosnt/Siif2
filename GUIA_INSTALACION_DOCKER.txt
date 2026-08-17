@@ -457,6 +457,10 @@ PARTE 8: COMANDOS DE USO DIARIO
 Estos son los comandos que usara con frecuencia. Todos se ejecutan
 en PowerShell, dentro de la carpeta del proyecto Siif2.
 
+  ATENCION: los comandos de esta parte son para DESARROLLO LOCAL.
+  En un servidor de produccion los comandos son distintos (llevan
+  "-f docker-compose.yml -f docker-compose.prod.yml"). Vea la PARTE 12.
+
   ENCENDER el sistema (cuando prenda la computadora):
   ---------------------------------------------------
          docker compose up -d
@@ -586,8 +590,14 @@ PARTE 11: ESTRUCTURA DEL PROYECTO (REFERENCIA)
   |   |-- node/Dockerfile       <-- Receta para el contenedor Node
   |   |-- nginx/default.conf    <-- Configuracion del servidor web
   |
-  |-- docker-compose.yml        <-- Archivo principal de Docker
-  |                                  (define los 4 contenedores)
+  |-- docker-compose.yml        <-- Archivo BASE de Docker
+  |                                  (solo app + nginx: lo que se necesita
+  |                                   en cualquier ambiente)
+  |-- docker-compose.override.yml <-- SOLO LOCAL. Se carga automaticamente.
+  |                                  Agrega Vite (node) y la base de datos
+  |                                   de prueba (db)
+  |-- docker-compose.prod.yml   <-- SOLO PRODUCCION. Hay que pasarlo con -f.
+  |                                  No levanta Vite ni base de datos local
   |
   |-- docker-entrypoint-initdb.d/
   |   |-- 01_dump_patched.sql   <-- Datos iniciales de la BD
@@ -600,6 +610,409 @@ PARTE 11: ESTRUCTURA DEL PROYECTO (REFERENCIA)
   |-- resources/js/             <-- Codigo Vue/TypeScript (frontend)
   |-- routes/web.php            <-- Las rutas/URLs del sistema
   |-- database/migrations/      <-- Archivos de migracion de BD
+
+
+================================================================================
+PARTE 12: ARRANCAR EN LOCAL vs ARRANCAR EN PRODUCCION
+================================================================================
+
+El mismo proyecto sirve para las dos cosas, pero NO se necesita lo mismo en
+cada ambiente:
+
+  +---------------------------+------------------+---------------------+
+  | Se necesita...            | Local (su PC)    | Produccion (VPS)    |
+  +---------------------------+------------------+---------------------+
+  | app (PHP/Laravel)         | SI               | SI                  |
+  | nginx (servidor web)      | SI               | SI                  |
+  | node (Vite en vivo)       | SI               | NO                  |
+  | db (base de datos propia) | SI               | NO (usa la real)    |
+  | Migraciones automaticas   | SI               | NO (a mano)         |
+  +---------------------------+------------------+---------------------+
+
+Por eso hay TRES archivos de Docker Compose:
+
+  docker-compose.yml           = la base (app + nginx). Siempre se usa.
+  docker-compose.override.yml  = SOLO local. Agrega node (Vite) y db.
+  docker-compose.prod.yml      = SOLO produccion. Ajustes del servidor.
+
+Lo importante de entender: Docker Compose carga el archivo "override"
+AUTOMATICAMENTE cuando usted no pasa ningun "-f". Y en cuanto usted SI pasa
+"-f", Compose deja de cargarlo. Eso es lo que hace la diferencia entre los
+dos ambientes, sin tener que editar archivos a mano cada vez.
+
+
+PASO 12.1 - Arrancar en LOCAL (desarrollo)
+----------------------------------------------------------------------
+  Es lo que ya venia haciendo, no cambia nada:
+
+         docker compose up -d
+
+  Esto levanta 4 contenedores: app, nginx, node (Vite con recarga en
+  caliente) y db (la base de datos de prueba con el dump de ejemplo).
+
+  Verificar:
+         docker compose ps
+
+  Abrir en el navegador:  http://localhost:8080
+
+
+PASO 12.2 - Arrancar en PRODUCCION
+----------------------------------------------------------------------
+  a) PRIMERO compilar los assets (una sola vez por cada vez que cambie
+     el codigo del frontend). En produccion no hay servidor de Vite, asi
+     que el JavaScript/CSS tiene que quedar compilado en public/build/:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           --profile build run --rm assets
+
+     Esto arranca un contenedor temporal, ejecuta "npm run build",
+     y se borra solo al terminar (por eso el --rm).
+
+     IMPORTANTE: revise que termine SIN el mensaje
+     "[copy-sw] No se encontro ...". Si aparece ese mensaje, el build
+     fallo y la pagina va a quedar en blanco.
+
+  b) Levantar la aplicacion:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+     Esto levanta SOLO 2 contenedores: app y nginx. No levanta Vite ni
+     crea ninguna base de datos: la app se conecta a la base de datos
+     real que este configurada en el .env del servidor (vea la PARTE 13).
+
+  c) Verificar:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+
+  CONSEJO: ese comando con los dos "-f" es largo y se repite mucho. Para
+  no escribirlo cada vez, en el servidor puede definir una variable de
+  entorno que le dice a Compose que archivos usar siempre:
+
+         export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+
+  Con eso puesto, en ESA terminal ya puede usar los comandos cortos
+  ("docker compose up -d", "docker compose ps", etc.) y Compose usara los
+  archivos de produccion. Para que quede permanente, agregue esa linea al
+  final del archivo ~/.bashrc del servidor.
+
+
+PASO 12.3 - El archivo .env es distinto en cada ambiente
+----------------------------------------------------------------------
+  El archivo .env NUNCA se sube a git (esta en .gitignore porque tiene
+  contrasenas). Eso significa que cada maquina tiene su propio .env:
+
+    - En su PC: un .env con los datos de la base de datos de prueba
+      (DB_HOST=db), APP_ENV=local, APP_DEBUG=true.
+
+    - En la VPS: OTRO .env, que vive solo ahi, con los datos reales
+      (DB_HOST=host.docker.internal), APP_ENV=production, APP_DEBUG=false.
+
+  Los dos se llaman igual (.env) pero tienen contenido distinto, y como
+  git no los toca, un "git pull" nunca pisa la configuracion de ninguno.
+
+  VALORES OBLIGATORIOS EN PRODUCCION:
+
+      APP_ENV=production
+      APP_DEBUG=false          <-- CRITICO (vea la nota de abajo)
+      LOG_LEVEL=error
+
+  Por que APP_DEBUG=false es critico: con APP_DEBUG=true, cuando ocurre
+  un error Laravel muestra en pantalla una pagina de diagnostico que
+  incluye el codigo fuente, las consultas SQL y TODAS las variables del
+  .env (contrasena de la base de datos, APP_KEY, etc.). En un servidor
+  publico eso se lo esta mostrando a cualquiera que provoque un error.
+  Con false, el visitante ve solo una pagina de error genérica y el
+  detalle completo queda guardado en storage/logs/laravel.log.
+
+  Despues de cambiar el .env hay que limpiar la cache de configuracion:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           exec app php artisan config:clear
+
+
+PASO 12.4 - Migraciones en produccion (se corren a mano)
+----------------------------------------------------------------------
+  En local, el contenedor ejecuta "php artisan migrate" solo, en cada
+  arranque. En produccion eso esta DESACTIVADO a proposito
+  (RUN_MIGRATIONS=false en docker-compose.prod.yml).
+
+  El motivo: la base de datos de produccion puede estar compartida con
+  otra instalacion de la aplicacion que sigue en uso. Si el contenedor le
+  cambia el esquema en cada reinicio, sin que nadie lo supervise, puede
+  romper esa instalacion en vivo.
+
+  Entonces en produccion se hace en dos pasos, con cuidado:
+
+  a) PRIMERO ver que migraciones estan pendientes (esto NO modifica nada):
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           exec app php artisan migrate:status
+
+  b) Si esta seguro de que se deben aplicar, entonces si:
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+           exec app php artisan migrate --force
+
+  RECOMENDACION: haga un respaldo de la base de datos antes del paso (b).
+
+
+PASO 12.5 - Desplegar un cambio de codigo en produccion
+----------------------------------------------------------------------
+  La secuencia completa cada vez que sube cambios al servidor:
+
+     1. Traer el codigo nuevo:
+            git pull
+
+     2. Recompilar los assets (si cambio algo de resources/js o css):
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              --profile build run --rm assets
+
+     3. Reiniciar la app:
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              restart app
+
+     4. Limpiar caches de Laravel:
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              exec app php artisan optimize:clear
+
+     5. Si hay migraciones nuevas, revisarlas y aplicarlas (PASO 12.4).
+
+
+================================================================================
+PARTE 13: CAMBIAR DE BASE DE DATOS (LOCAL <-> PRODUCCION)
+================================================================================
+
+Hay dos escenarios totalmente distintos y conviene tenerlos claros:
+
+  ESCENARIO A - Base de datos LOCAL (la que crea Docker)
+    Docker levanta un contenedor "db" con su propia base de datos, vacia,
+    y le carga el dump de ejemplo que viene en el proyecto
+    (docker-entrypoint-initdb.d/01_dump_patched.sql). Es una base
+    independiente y desechable: sirve para desarrollar y probar sin
+    riesgo. Los datos NO son los reales.
+
+  ESCENARIO B - Base de datos de PRODUCCION (externa a Docker)
+    La base de datos real ya existe en el servidor (por ejemplo el
+    MySQL/MariaDB nativo de una VPS con cPanel), fuera de Docker. Aqui
+    Docker NO crea ninguna base: la aplicacion se conecta a la que ya
+    esta ahi, con sus datos reales.
+
+
+PASO 13.1 - ESCENARIO A: usar la base de datos local
+----------------------------------------------------------------------
+  a) En el .env:
+
+         DB_CONNECTION=mysql
+         DB_HOST=db
+         DB_PORT=3306
+         DB_DATABASE=appserviciosinte_siif
+         DB_USERNAME=laravel_user
+         DB_PASSWORD=0690164
+
+     El "db" de DB_HOST es el nombre del contenedor de base de datos
+     dentro de la red de Docker. No es un dominio de internet.
+
+  b) Levantar en modo local (asi se incluye el contenedor db):
+
+         docker compose up -d
+
+
+PASO 13.2 - ESCENARIO B: conectarse a la base de datos de produccion
+----------------------------------------------------------------------
+  Aqui hay DOS obstaculos que hay que resolver, y los dos son de red /
+  permisos, no de la aplicacion:
+
+  OBSTACULO 1: "localhost" no significa lo mismo dentro de un contenedor
+  ------------------------------------------------------------------
+  Dentro de un contenedor Docker, "localhost" y "127.0.0.1" apuntan al
+  PROPIO contenedor, no al servidor. Si la base de datos corre en el
+  sistema del servidor (fuera de Docker), poner DB_HOST=127.0.0.1 falla
+  siempre con "Connection refused": el contenedor busca una base de datos
+  dentro de si mismo, y ahi no hay ninguna.
+
+  La solucion es el nombre especial "host.docker.internal", que si apunta
+  de vuelta al servidor. Funciona porque docker-compose.yml ya incluye:
+
+         extra_hosts:
+           - "host.docker.internal:host-gateway"
+
+  Entonces en el .env del servidor:
+
+         DB_CONNECTION=mysql
+         DB_HOST=host.docker.internal
+         DB_PORT=3306
+         DB_DATABASE=<la base de datos real>
+         DB_USERNAME=<el usuario real>
+         DB_PASSWORD=<la contrasena real>
+
+  OBSTACULO 2: el usuario de MySQL solo acepta conexiones de "localhost"
+  ------------------------------------------------------------------
+  Los paneles tipo cPanel crean los usuarios de MySQL con permiso para
+  conectarse UNICAMENTE desde localhost. Ahora la conexion llega desde la
+  red interna de Docker (una IP tipo 172.18.0.x), asi que la base la
+  rechaza con este error, aunque el usuario y la contrasena sean
+  correctos:
+
+         Host '172.18.0.4' is not allowed to connect to this server
+
+  En MySQL/MariaDB un usuario es en realidad la combinacion
+  usuario + host: 'usuario'@'localhost' y 'usuario'@'172.18.0.%' son dos
+  permisos distintos aunque compartan el mismo nombre. (Por eso el panel
+  de cPanel sigue mostrando un solo usuario: esa pantalla no muestra la
+  parte del host.)
+
+  Hay dos formas de resolverlo. Con CUALQUIERA de las dos alcanza:
+
+    FORMA 1 (desde cPanel, recomendada):
+      - Entrar a cPanel > "Remote MySQL" (o "MySQL remoto")
+      - En "Add Access Host" agregar:   172.18.0.%
+      - Guardar
+
+    FORMA 2 (por linea de comandos, en el servidor, FUERA de Docker):
+
+         mysql -u root -p
+
+      Y luego, reemplazando usuario/clave/base por los reales:
+
+         CREATE USER IF NOT EXISTS 'USUARIO'@'172.18.0.%'
+             IDENTIFIED BY 'CONTRASENA';
+         GRANT ALL PRIVILEGES ON BASE_DE_DATOS.*
+             TO 'USUARIO'@'172.18.0.%';
+         FLUSH PRIVILEGES;
+         EXIT;
+
+      Se usa el comodin 172.18.0.% (y no la IP exacta) porque la IP del
+      contenedor puede cambiar cuando se reinicia.
+
+      Esto NO toca el permiso que ya existe para 'USUARIO'@'localhost':
+      agrega uno nuevo. La instalacion vieja que use localhost sigue
+      funcionando igual.
+
+      Para saber cual es el rango de IPs de su red de Docker:
+
+         docker network inspect siif-2_laravel_network \
+           --format '{{json .IPAM.Config}}'
+
+  c) Levantar en modo produccion (asi NO se crea ninguna base local):
+
+         docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+
+PASO 13.3 - Verificar A QUE base de datos se conecto realmente
+----------------------------------------------------------------------
+  Esto es importante: la conexion puede decir "OK" y estar apuntando a la
+  base equivocada. Para confirmarlo:
+
+  a) Prueba rapida de conexion, que muestra el error real si falla
+     (cambie los datos por los suyos):
+
+         docker compose exec app php -r '
+         try {
+             $pdo = new PDO("mysql:host=host.docker.internal;port=3306;dbname=BASE",
+                            "USUARIO", "CONTRASENA");
+             echo "CONECTADO OK\n";
+         } catch (PDOException $e) {
+             echo "ERROR: " . $e->getMessage() . "\n";
+         }
+         '
+
+     Como interpretar el resultado:
+       "Connection refused"      -> problema de red (OBSTACULO 1)
+       "Host ... not allowed"    -> problema de permisos (OBSTACULO 2)
+       "Access denied for user"  -> usuario o contrasena incorrectos
+       "Unknown database"        -> el nombre de la base esta mal
+       "CONECTADO OK"            -> listo
+
+  b) Ver la configuracion que tiene cargada la aplicacion:
+
+         docker compose exec app env | grep DB_
+
+  c) Resumen de la conexion segun Laravel:
+
+         docker compose exec app php artisan db:show
+
+  d) La comprobacion mas confiable (le pregunta al propio servidor de
+     base de datos, no al archivo .env):
+
+         docker compose exec app php artisan tinker
+
+     Y adentro:
+
+         DB::select('SELECT @@hostname AS host, DATABASE() AS bd, VERSION() AS version');
+
+  e) Confirmar que los DATOS son los reales (no solo la estructura).
+     Todavia dentro de tinker:
+
+         Schema::getTableListing();              // listar tablas
+         Schema::getColumnListing('t_personas'); // columnas de una tabla
+         DB::table('t_personas')->count();       // cuantos registros hay
+
+     Compare ese numero con lo que sabe que tiene la base real, o busque
+     un registro que usted reconozca:
+
+         DB::table('t_personas')
+             ->where('nombre_completo_razon_social', 'like', '%NOMBRE%')
+             ->get();
+
+     Para salir de tinker:  exit
+
+  CUIDADO cuando este conectado a la base de datos REAL: dentro de tinker
+  use solo consultas de LECTURA (get, first, count). Evite ->save(),
+  ->update(), ->delete() o factories, para no modificar datos de
+  produccion por accidente.
+
+
+PASO 13.4 - Volver de la base de produccion a la base local
+----------------------------------------------------------------------
+  Si cambio el .env para apuntar a produccion y ahora quiere volver a la
+  base local, normalmente basta con restaurar los valores del PASO 13.1 y
+  levantar en modo local otra vez.
+
+  PERO puede aparecer este error:
+
+         Container laravel-db  Error
+         dependency failed to start: container laravel-db is unhealthy
+
+  Y en los logs de la base de datos, un "Access denied for user".
+
+  POR QUE PASA: la imagen de MySQL lee las variables MYSQL_DATABASE /
+  MYSQL_USER / MYSQL_PASSWORD (que vienen del .env) UNICAMENTE la primera
+  vez que arranca con el volumen de datos vacio. Despues de esa primera
+  vez, ignora esas variables y usa lo que quedo guardado dentro del
+  volumen "mysql_data". Entonces, si cambio usuario o contrasena en el
+  .env, el healthcheck intenta entrar con los datos NUEVOS pero el
+  servidor adentro tiene los VIEJOS, falla el login, el contenedor nunca
+  llega a "healthy", y por lo tanto "app" nunca arranca y la pagina no
+  carga.
+
+  COMO CONFIRMARLO:
+
+         docker compose logs db --tail=50
+
+  (busque "Access denied for user" cerca del final)
+
+  COMO ARREGLARLO: borrar el volumen para que la base se cree de nuevo,
+  esta vez leyendo el .env actual.
+
+  *** ANTES DE CONTINUAR: esto BORRA la base de datos local por completo.
+      Es seguro solo porque esta base es la copia desechable de
+      desarrollo. La base de datos de PRODUCCION no se toca: esa vive en
+      el servidor, fuera de Docker, y no tiene ninguna relacion con este
+      volumen. ***
+
+         docker compose down
+         docker volume ls | grep mysql_data
+         docker volume rm siif-2_mysql_data
+         docker compose up -d
+
+  (ajuste "siif-2_mysql_data" al nombre exacto que le muestre el comando
+   "docker volume ls". El prefijo depende del nombre de la carpeta del
+   proyecto.)
+
+  Al arrancar con el volumen borrado, el contenedor se inicializa desde
+  cero: crea el usuario y la base con los valores del .env actual y vuelve
+  a importar el dump de ejemplo. La primera vez tarda varios minutos
+  porque el dump es grande.
 
 
 ================================================================================

@@ -1,0 +1,89 @@
+# SOLO DESARROLLO LOCAL.
+#
+# Compose carga este archivo AUTOMATICAMENTE cuando se corre "docker compose
+# up" sin pasar -f. Aqui va todo lo que sirve unicamente para desarrollar:
+#
+#   - node : el servidor de Vite (npm run dev) con recarga en caliente.
+#   - db   : una base de datos MySQL propia, que se crea desde cero con el
+#            dump de ejemplo de docker-entrypoint-initdb.d/.
+#
+# En produccion NO se usa este archivo: se pasa -f docker-compose.yml -f
+# docker-compose.prod.yml, y al hacerlo Compose ignora este override, asi que
+# ni Vite ni la base de datos de prueba se levantan.
+
+services:
+  app:
+    # En local la app espera a que la base de datos del contenedor "db" este
+    # lista. En produccion la base de datos es externa (no la administra
+    # Compose), por eso esta dependencia vive solo aqui.
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    depends_on:
+      - app
+      - node
+
+  # Node.js para Vite (servidor de desarrollo) - USAR EL MISMO USER_ID
+  node:
+    build:
+      context: .
+      dockerfile: .docker/node/Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+    container_name: vue-build
+    restart: unless-stopped
+    working_dir: /var/www
+    command: sh -c "npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
+    volumes:
+      - .:/var/www:cached
+      - node_modules:/var/www/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HOST=0.0.0.0
+      - VITE_PORT=5173
+      - VITE_HMR_HOST=localhost
+      - VITE_HMR_PORT=5173
+    networks:
+      - laravel_network
+
+  # Base de datos de desarrollo. OJO: las variables MYSQL_* solo se leen la
+  # PRIMERA vez que arranca con el volumen vacio; despues MySQL usa lo que
+  # quedo guardado en el volumen mysql_data. Si se cambian usuario/clave en el
+  # .env hay que borrar el volumen (ver GUIA_INSTALACION_DOCKER.txt, PARTE 13).
+  db:
+    image: mysql:8.0.42
+    container_name: laravel-db
+    restart: unless-stopped
+    ports:
+      - "3309:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro,Z
+    networks:
+      - laravel_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          mysql -h127.0.0.1 -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD"
+          -e "SELECT 1" "$$MYSQL_DATABASE" >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+
+volumes:
+  mysql_data:
+    driver: local

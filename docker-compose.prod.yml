@@ -1,0 +1,29 @@
+# SOLO PRODUCCION. No se carga solo: hay que pasarlo explicitamente.
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Al pasar -f, Compose deja de cargar docker-compose.override.yml, por lo que
+# NO se levantan ni el servidor de Vite (node) ni la base de datos de prueba
+# (db). Quedan corriendo solo app + nginx, y la app se conecta a la base de
+# datos real que indique el .env del servidor.
+#
+# Antes del primer arranque hay que compilar los assets una vez (en produccion
+# no hay servidor de Vite que los sirva al vuelo):
+#
+#     docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#       --profile build run --rm assets
+
+services:
+  app:
+    # No ejecutar migraciones automaticamente al arrancar (ver
+    # .docker/php/init.sh). En produccion la base de datos puede estar
+    # compartida con otra instalacion en vivo: cambiarle el esquema en cada
+    # reinicio del contenedor, sin supervision, puede romperla. Las
+    # migraciones se corren a mano cuando corresponda:
+    #
+    #     docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+    #       exec app php artisan migrate:status   # ver que falta
+    #     docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+    #       exec app php artisan migrate --force  # aplicarlas
+    environment:
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
