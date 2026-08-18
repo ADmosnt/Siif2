@@ -777,6 +777,21 @@ PASO 12.5 - Desplegar un cambio de codigo en produccion
 
      5. Si hay migraciones nuevas, revisarlas y aplicarlas (PASO 12.4).
 
+  EL PASO 2 NO ES OPCIONAL. Ni public/build/ ni public/sw.js estan en git (son
+  artefactos de build): se generan en cada deploy. Si no se corre el build:
+
+    - Falta public/build/manifest.json y Laravel muestra
+      "Vite manifest not found at /var/www/public/build/manifest.json".
+    - Falta public/sw.js, /sw.js da 404 y no hay modo offline (la app sigue
+      funcionando normal online).
+
+  Y ES IMPORTANTE QUE SE CORRA JUNTO CON EL CODIGO NUEVO: el service worker
+  lleva adentro la lista de assets a precachear CON SU HASH
+  (/build/assets/app-D8Qfp5CN.js, etc.). Un sw.js de un build viejo pide
+  assets que ya no existen, recibe 404, el evento install falla y el service
+  worker nunca se activa: el modo offline queda completamente muerto aunque
+  todo lo demas funcione. Por eso sw.js dejo de estar versionado en git.
+
 
 ================================================================================
 PARTE 13: CAMBIAR DE BASE DE DATOS (LOCAL <-> PRODUCCION)

@@ -4,6 +4,17 @@
 /public/build
 /public/hot
 /public/storage
+# El service worker es un ARTEFACTO DE BUILD: "npm run build" lo genera con un
+# manifest de precache que lista los assets con su hash del momento
+# (/build/assets/app-D8Qfp5CN.js, etc.). Tenerlo versionado hacia que cada
+# deploy trajera un sw.js viejo cuyo precache apuntaba a archivos que ya no
+# existian: al instalarse, Workbox pedia esos assets, recibia 404, el evento
+# install fallaba y el service worker NUNCA se activaba. Resultado: el modo
+# offline no funcionaba en absoluto (toda navegacion offline caia en la pagina
+# de error del navegador) y encima parecia un problema del codigo del sw.
+# Tiene que generarse en cada deploy junto con los assets que precachea.
+/public/sw.js
+/public/workbox-*.js
 /storage/*.key
 /storage/pail
 /vendor

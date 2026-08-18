@@ -75,6 +75,17 @@ const submitOnline = () => {
       generalError.value = null;
       const store = useOfflineStore();
       store.cacheAllOnLogin().catch(() => {});
+
+      // Avisar al service worker que ya hay sesion, para que cachee los shells
+      // de /tdp, /nuevo-reporte y /sync-queue. Al instalarse (en la pantalla de
+      // login) esas URLs responden 302 al login porque todavia no hay cookie
+      // de sesion, asi que no se pueden cachear ahi: sin este aviso, la
+      // primera navegacion offline hacia esos modulos no encontraba shell.
+      navigator.serviceWorker?.ready
+        .then((registration) => {
+          registration.active?.postMessage({ type: 'CACHE_OFFLINE_SHELLS' });
+        })
+        .catch(() => {});
     },
     preserveScroll: true,
   });

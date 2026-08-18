@@ -4,12 +4,6 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Cambia en cada build: fuerza a Workbox a re-descargar los shells de
-// /login, /tdp y /nuevo-reporte (ver additionalManifestEntries mas abajo)
-// en cada deploy. Una revision fija nunca se refresca, y esos shells
-// terminarian referenciando JS/CSS ya borrados de un build anterior.
-const offlineShellRevision = String(Date.now())
-
 export default defineConfig({
         server: {
         host: '0.0.0.0',
@@ -68,14 +62,15 @@ export default defineConfig({
                 modifyURLPrefix: {
                     '': '/build/',
                 },
-                // Garantiza que el login quede precacheado desde la primera
-                // instalacion del SW, sin depender de que el navegador haya
-                // navegado ahi antes (ver setCatchHandler en sw.ts).
-                additionalManifestEntries: [
-                    { url: '/login', revision: offlineShellRevision },
-                    { url: '/tdp', revision: offlineShellRevision },
-                    { url: '/nuevo-reporte', revision: offlineShellRevision },
-                ],
+                // Los shells de navegacion (/login, /tdp, /nuevo-reporte,
+                // /sync-queue) NO se agregan aca a proposito. El precache de
+                // Workbox es todo-o-nada: si una entrada falla, el evento
+                // install se rechaza y el service worker no se activa nunca,
+                // perdiendose todo el modo offline. Y esas URLs fallan solas:
+                // requieren sesion, asi que cuando el SW se instala en la
+                // pantalla de login responden 302. Ahora sw.ts las cachea a
+                // mano en SHELL_CACHE, tolerando fallos individuales y
+                // reintentando despues del login.
             },
         }),
     ],
