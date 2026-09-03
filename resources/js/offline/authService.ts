@@ -58,12 +58,27 @@ export function createOfflineSession(user: CachedAuth): OfflineSession {
     expires_at: user.expires_at,
   }
 
-  localStorage.setItem(OFFLINE_SESSION_KEY, JSON.stringify(session))
+  // localStorage puede lanzar SecurityError en Safari/iOS cuando el
+  // usuario tiene bloqueadas las cookies/datos de sitio a nivel de
+  // sistema: se degrada a "sin sesion offline guardada" en vez de
+  // propagar el error (esto se lee de forma sincrona durante el setup()
+  // de offlineStore, que corre para TODA pagina — un throw aca tumba el
+  // montaje completo de la app, ver PushNotificationPrompt.vue).
+  try {
+    localStorage.setItem(OFFLINE_SESSION_KEY, JSON.stringify(session))
+  } catch (error) {
+    console.warn('No se pudo guardar la sesion offline (localStorage no disponible):', error)
+  }
   return session
 }
 
 export function getOfflineSession(): OfflineSession | null {
-  const data = localStorage.getItem(OFFLINE_SESSION_KEY)
+  let data: string | null
+  try {
+    data = localStorage.getItem(OFFLINE_SESSION_KEY)
+  } catch {
+    return null
+  }
   if (!data) return null
 
   try {
@@ -79,7 +94,11 @@ export function getOfflineSession(): OfflineSession | null {
 }
 
 export function clearOfflineSession(): void {
-  localStorage.removeItem(OFFLINE_SESSION_KEY)
+  try {
+    localStorage.removeItem(OFFLINE_SESSION_KEY)
+  } catch {
+    // Nada que limpiar si localStorage no esta disponible
+  }
 }
 
 export function isOfflineAuthenticated(): boolean {

@@ -28,6 +28,16 @@ createInertiaApp({
     })
     const pinia = createPinia()
 
+    // SyncStatusBar y PushNotificationPrompt son componentes globales,
+    // hermanos de la pagina real en el mismo render(): un error sin
+    // capturar en cualquiera de los dos (p.ej. una API del navegador no
+    // soportada) tumba el montaje de TODA la app, dejando pantalla en
+    // negro incluso antes de llegar al login. Con errorHandler, Vue loguea
+    // y sigue en vez de abortar el arbol completo.
+    app.config.errorHandler = (err, instance, info) => {
+      console.error('Error no capturado en componente Vue:', err, info)
+    }
+
     app.use(plugin)      // Inertia primero
     app.use(pinia)       // Luego Pinia
     app.use(ZiggyVue)

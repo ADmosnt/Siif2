@@ -2,14 +2,22 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-const permission = ref(Notification.permission)
+// iOS Safari/Chrome (pestaña normal, no instalada como PWA en el Home
+// Screen) no expone el global "Notification" en absoluto: no es que los
+// permisos esten denegados, la API entera no existe. Referenciar
+// Notification.permission sin este chequeo lanza un ReferenceError
+// sincrono apenas se monta el componente que, al ser hermano de <App/> en
+// el mismo render() de app.ts, tumba el montaje de TODA la aplicacion
+// (pantalla en negro, incluso antes del login).
+const notificationsSupported = 'Notification' in window
+const permission = ref(notificationsSupported ? Notification.permission : 'unsupported')
 const showPrompt = ref(false)
 const subscribing = ref(false)
 
 onMounted(() => {
     // Solo mostrar el prompt si el navegador soporta notificaciones
     // y el usuario aún no ha decidido
-    if ('Notification' in window && 'serviceWorker' in navigator) {
+    if (notificationsSupported && 'serviceWorker' in navigator) {
         if (Notification.permission === 'default') {
             // Esperar un poco antes de mostrar el prompt
             setTimeout(() => {
